@@ -6,10 +6,13 @@ if user_input == "安装".strip():
     sp.run(["sudo","apt","install","qemu-system","qemu-utils","qemu-kvm"])
 elif user_input == "卸载".strip():
     sp.run(["sudo","apt","remove","qemu-system","qemu-utils","qemu-kvm"])
-elif user_input == "跳过" or user_input == "tg".strip():
+elif user_input == "跳过" or user_input == "tg".lower().strip():
     bin = "qemu-system-x86_64"
     cls_command = "-M"
     cls_pc = "pc"
+    name_command = "-name"
+    user_input = input("输入虚拟机名字(默认VM)").strip() or "VM"
+    name = user_input
     cpu_command = "-cpu"
     user_input = input("输入CPU型号(默认Core 2 Duo)").strip() or "core2duo"
     cpu = user_input
@@ -42,7 +45,7 @@ elif user_input == "跳过" or user_input == "tg".strip():
         if user_input.lower().strip() == "a":
                 kvm = "-enable-kvm"
                 print("虚拟机已成功运行")
-                cmd = [bin,cls_command,cls_pc,kvm,cpu_command,cpu,core_command,core,ram_command,ram,rom_command,rom,s_command,s,net_command,net,vga_command,vga,"-drive",vvfat_L,"-monitor","stdio"]
+                cmd = [bin,cls_command,cls_pc,name_command,name,kvm,cpu_command,cpu,core_command,core,ram_command,ram,rom_command,rom,s_command,s,net_command,net,vga_command,vga,"-drive",vvfat_L,"-monitor","stdio"]
                 cmd_str = " ".join(cmd)
                 print("\nQEMU命令（终端可直接执行）：")
                 print(cmd_str)
@@ -51,7 +54,7 @@ elif user_input == "跳过" or user_input == "tg".strip():
                 kvm_cmd = "-accel"
                 kvm = "tcg"
                 print("虚拟机已成功运行")
-                cmd = [bin,cls_command,cls_pc,kvm_cmd,kvm,cpu_command,cpu,core_command,core,ram_command,ram,rom_command,rom,s_command,s,net_command,net,vga_command,vga,"-drive",vvfat_L,"-monitor","stdio"]
+                cmd = [bin,cls_command,cls_pc,name_command,name,kvm_cmd,kvm,cpu_command,cpu,core_command,core,ram_command,ram,rom_command,rom,s_command,s,net_command,net,vga_command,vga,"-drive",vvfat_L,"-monitor","stdio"]
                 cmd_str = " ".join(cmd)
                 print("\nQEMU命令（终端可直接执行）：")
                 print(cmd_str)
@@ -65,7 +68,7 @@ elif user_input == "跳过" or user_input == "tg".strip():
                     kvm_cmd = "-accel"
                     kvm = "tcg"
                     print("虚拟机已成功运行")
-                    cmd = [bin,cls_command,cls_pc,kvm_cmd,kvm,cpu_command,cpu,core_command,core,ram_command,ram,rom_command,rom,s_command,s,net_command,net,vga_command,vga,"-drive",vvfat_W,"-monitor","stdio"]
+                    cmd = [bin,cls_command,cls_pc,name_command,name,kvm_cmd,kvm,cpu_command,cpu,core_command,core,ram_command,ram,rom_command,rom,s_command,s,net_command,net,vga_command,vga,"-drive",vvfat_W,"-monitor","stdio"]
                     cmd_str = " ".join(cmd)
                     print("\nQEMU命令（终端可直接执行）：")
                     print(cmd_str)
@@ -74,7 +77,7 @@ elif user_input == "跳过" or user_input == "tg".strip():
                     kvm_cmd = "-accel"
                     kvm = "whpx"
                     print("虚拟机已成功运行")
-                    cmd = [bin,cls_command,cls_pc,kvm_cmd,kvm,cpu_command,cpu,core_command,core,ram_command,ram,rom_command,rom,s_command,s,net_command,net,vga_command,vga,"-drive",vvfat_W,"-monitor","stdio"]
+                    cmd = [bin,cls_command,cls_pc,name_command,name,kvm_cmd,kvm,cpu_command,cpu,core_command,core,ram_command,ram,rom_command,rom,s_command,s,net_command,net,vga_command,vga,"-drive",vvfat_W,"-monitor","stdio"]
                     cmd_str = " ".join(cmd)
                     print("\nQEMU命令（终端可直接执行）：")
                     print(cmd_str)
