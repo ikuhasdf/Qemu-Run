@@ -34,7 +34,7 @@ elif user_input == "跳过" or user_input == "tg".strip():
     vga = user_input
     kvm_cmd = "-accel"
     user_input = input("设置共享文件夹Windows选B,Linux共享文件夹选A:")
-    if user_input == "A":
+    if user_input.lower().strip() == "a":
         user_input = input("设置共享文件夹Linux输入共享文件夹路径:")
         user_input = user_input.replace("\\", "/")
         vvfat_L = f"format=vvfat,dir={user_input},rw=on"
