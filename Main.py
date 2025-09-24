@@ -173,7 +173,7 @@ elif user_input == "跳过" or user_input == "tg".lower().strip():
                             sp.run(cmd, check=True, shell=False)
                         elif user_input.lower().strip() == "b":
                             kvm_cmd = "-accel"
-                            kvm = "tcg"  # 修复乱码
+                            kvm = "tcg"
                             print("虚拟机已成功运行")
                             if cd == "none":
                                 cmd = [bin, cls_command, cls_pc, name_command, name, kvm_cmd, kvm, cpu_command, cpu,
