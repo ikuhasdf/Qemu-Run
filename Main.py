@@ -1,5 +1,5 @@
 import subprocess as sp
-print("===Qemu启动器5.0电脑移植版===")
+print("===Qemu启动器1.0电脑移植版===")
 user_input = input("安装或卸载或跳过安装(只适合已安装Qemu的用户)Qemu(输入安装，卸载一键Linux命令,跳过(tg)),Windows版用户从官方网站下载QEMU：")
 if user_input == "安装".strip():
     sp.run(["sudo","apt","install","qemu-system","qemu-utils","qemu-kvm","qemu-system-gui"])
