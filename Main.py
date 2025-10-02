@@ -100,7 +100,7 @@ class MainUI:
         self.vm_sound_1.pack()
         def addsound():
             self.vm_sound = self.vm_sound_1.get()
-            self.vm_sound.extend(["-device", self.vm_sound])
+            self.vm_cmd.extend(["-device", self.vm_sound])
         self.vm_sound_button = ttk.Button(self.root,text="确定",command=addsound)
         self.vm_sound_button.pack()
         #虚拟机网卡
@@ -110,7 +110,7 @@ class MainUI:
         self.vm_net_1.pack()
         def addnet():
             self.vm_net = self.vm_net_1.get()
-            self.vm_net.extend(["-device", self.vm_net])
+            self.vm_cmd.extend(["-device", self.vm_net])
         self.vm_net_button = ttk.Button(self.root,text="确定",command=addnet)
         self.vm_net_button.pack()
         #虚拟机共享文件夹
