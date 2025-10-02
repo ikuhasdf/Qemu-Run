@@ -1,145 +1,124 @@
-import subprocess as sp
-
-print("===Qemu启动器电脑移植版===")
-
-user_input = input("安装或卸载或跳过安装(只适合已安装Qemu的用户)Qemu(输入安装，卸载一键Linux命令,跳过(tg)),Windows版用户从官方网站下载QEMU(默认跳过)") or "tg"
-if user_input == "安装".strip():
-    sp.run(["sudo", "apt", "install", "qemu-system", "qemu-utils", "qemu-kvm", "qemu-system-gui"])
-elif user_input == "卸载".strip():
-    sp.run(["sudo", "apt", "remove", "qemu-system", "qemu-utils", "qemu-kvm", "qemu-system-gui"])
-elif user_input == "跳过" or user_input == "tg".lower().strip():
-    bin = "qemu-system-x86_64"
-    cls_command = "-M"
-    cls_pc = "pc"
-    name_command = "-name"
-    user_input = input("输入虚拟机名字(默认VM)").strip() or "VM"
-    name = user_input
-    cpu_command = "-cpu"
-    user_input = input("输入CPU型号(默认Core 2 Duo)").strip() or "core2duo"
-    cpu = user_input
-    core_command = "-smp"
-    user_input = input("输入核心数(默认单核)").strip() or "1"
-    core = user_input
-    ram_command = "-m"
-    user_input = input("输入内存数量(默认1GB)").strip() or "1024"
-    ram = user_input
-    rom_command = "-hda"
-    user_input = input("输入硬盘路径(默认无)").lower().strip() or "none"
-    user_input = user_input.replace("\\", "/")
-    rom = user_input
-    user_input = input("输入任意声卡(默认Intel HDA)").strip() or "intel-hda"
-    s_command = "-device"
-    s = user_input
-    user_input = input("输入任意网卡(默认Intel E1000)").strip() or "e1000"
-    net_command = "-device"
-    net = user_input
-    user_input = input("输入任意显卡(默认VMware SVGA)").strip() or "vmware"
-    vga_command = "-vga"
-    vga = user_input
-    user_input = input("输入任意ISO路径(默认无)").strip() or "none"
-    cd_command = "-cdrom"
-    cd = user_input
-    user_input = input("输入引导磁盘(默认磁盘(C),磁盘启动输入C,CD启动输入D)").lower().strip() or "c"
-    boot_command = "-boot"
-    boot = user_input
-
-    user_input = input("设置共享文件夹Linux共享文件夹选A,Windows选B,(回车默认无共享文件夹)") or "none"
-
-    cmd = [bin, cls_command, cls_pc, name_command, name, cpu_command, cpu,
-           core_command, core, ram_command, ram, boot_command, boot,
-           s_command, s, net_command, net, vga_command, vga]
-
-    if user_input.lower().strip() == "a":
-        user_input = input("设置共享文件夹Linux输入共享文件夹路径:")
-        user_input = user_input.replace("\\", "/")
-        vvfat_L = f"format=vvfat,dir={user_input},rw=on"
-        user_input = input("输入任意加速(默认KVM),A.KVM(Linux),B.TCG(通用)") or "a"
-        if user_input.lower().strip() == "a":
-            kvm = "-enable-kvm"
-            cmd.insert(5, kvm)  # 在适当位置插入KVM参数
-            print("虚拟机已成功运行")
-        elif user_input.lower().strip() == "b":
-            kvm_cmd = "-accel"
-            kvm = "tcg,thread=multi"
-            cmd.insert(5, kvm_cmd)
-            cmd.insert(6, kvm)
-            print("虚拟机已成功运行")
-
-        if cd != "none":
-            cmd.extend([cd_command, cd])
-        if rom != "none":
-            cmd.extend([rom_command, rom])
-
-        cmd.extend(["-drive", vvfat_L, "-monitor", "stdio"])
-
-        cmd_str = " ".join(cmd)
-        print("\nQEMU命令（终端可直接执行）：")
-        print(cmd_str)
-        sp.run(cmd, check=True, shell=False)
-
-    elif user_input.lower().strip() == "b":
-        user_input = input("设置共享文件夹Windows输入共享文件夹路径:")
-        user_input = user_input.replace("\\", "/")
-        vvfat_W = f"format=vvfat,dir={user_input},rw=on"
-        user_input = input("输入任意加速(默认TCG)A.TCG(通用),B.WHPX(Windows特有):") or "a"
-
-        if user_input.lower().strip() == "a":
-            kvm_cmd = "-accel"
-            kvm = "tcg,thread=multi"
-        elif user_input.lower().strip() == "b":
-            kvm_cmd = "-accel"
-            kvm = "whpx"
-
-
-        cmd.insert(5, kvm_cmd)
-        cmd.insert(6, kvm)
-        print("虚拟机已成功运行")
-
-
-        if cd != "none":
-            cmd.extend([cd_command, cd])
-        if rom != "none":
-            cmd.extend([rom_command, rom])
-
-        cmd.extend(["-drive", vvfat_W, "-monitor", "stdio"])
-
-        cmd_str = " ".join(cmd)
-        print("\nQEMU命令（终端可直接执行）：")
-        print(cmd_str)
-        sp.run(cmd, check=True, shell=False)
-
-    else:
-        user_input = input("Linux输入A,Windows输入B").lower().strip() or "b"
-        if user_input == "a":
-            user_input = input("输入任意加速(默认KVM),A.KVM(Linux),B.TCG(通用)") or "a"
-            if user_input.lower().strip() == "a":
-                kvm = "-enable-kvm"
-                cmd.insert(5, kvm)
-            elif user_input.lower().strip() == "b":
-                kvm_cmd = "-accel"
-                kvm = "tcg"
-                cmd.insert(5, kvm_cmd)
-                cmd.insert(6, kvm)
-        else:
-            user_input = input("输入任意加速(默认TCG)A.TCG(通用),B.WHPX(Windows特有):") or "a"
-            kvm_cmd = "-accel"
-            if user_input.lower().strip() == "a":
-                kvm = "tcg"
-            elif user_input.lower().strip() == "b":
-                kvm = "whpx"
-            cmd.insert(5, kvm_cmd)
-            cmd.insert(6, kvm)
-
-        print("虚拟机已成功运行")
-
-        if cd != "none":
-            cmd.extend([cd_command, cd])
-        if rom != "none":
-            cmd.extend([rom_command, rom])
-
-        cmd.extend(["-monitor", "stdio"])
-
-        cmd_str = " ".join(cmd)
-        print("\nQEMU命令（终端可直接执行）：")
-        print(cmd_str)
-        sp.run(cmd, check=True, shell=False)
+from tkinter import *
+from subprocess import *
+from tkinter import ttk,messagebox
+import threading
+class MainUI:
+    def __init__(self):
+        self.vm_cmd = ["qemu-system-x86_64"]
+        self.root = Tk()
+        self.root.title("Qemu启动器1.0-Qemu 4.1.0")
+        self.root.geometry("800x600")
+        #虚拟机名字
+        def vmruncmd():
+            self.command_str = " ".join(self.vm_cmd)
+            messagebox.showerror("命令", self.command_str)
+        self.vm_cmd_cmd = Button(self.root,text="虚拟机命令",command=vmruncmd)
+        self.vm_cmd_cmd.pack()
+        self.vm_name_title = Label(self.root,text="输入虚拟机名字")
+        self.vm_name_title.pack()
+        self.vm_name_1 = Entry(self.root)
+        self.vm_name_1.pack()
+        def addname():
+            self.vm_name = self.vm_name_1.get()
+            self.vm_cmd.extend(["-name", self.vm_name])
+        self.vm_name_button = ttk.Button(self.root,text="确定",command=addname)
+        self.vm_name_button.pack()
+        #虚拟机类型
+        self.vm_class_title = Label(self.root,text="输入虚拟机类型")
+        self.vm_class_title.pack()
+        self.vm_class_1 = Entry(self.root)
+        self.vm_class_1.pack()
+        def addclass():
+            self.vm_class = self.vm_class_1.get()
+            self.vm_cmd.extend(["-M", self.vm_class])
+        self.vm_class_button = ttk.Button(self.root,text="确定",command=addclass)
+        self.vm_class_button.pack()
+        #虚拟机加速
+        self.vm_kvm_title = Label(self.root,text="输入虚拟机加速")
+        self.vm_kvm_title.pack()
+        self.vm_kvm_1 = Entry(self.root)
+        self.vm_kvm_1.pack()
+        def addkvm():
+            self.vm_kvm = self.vm_kvm_1.get()
+            self.vm_cmd.extend(["-accel", self.vm_kvm])
+        self.vm_kvm_button = ttk.Button(self.root,text="确定",command=addkvm)
+        self.vm_kvm_button.pack()
+        #虚拟机CPU
+        self.vm_cpu_title = Label(self.root,text="输入CPU型号")
+        self.vm_cpu_title.pack()
+        self.vm_cpu_1 = Entry(self.root)
+        self.vm_cpu_1.pack()
+        def addcpu():
+            self.vm_cpu = self.vm_cpu_1.get()
+            self.vm_cmd.extend(["-cpu", self.vm_cpu])
+        self.vm_cpu_button = ttk.Button(self.root,text="确定",command=addcpu)
+        self.vm_cpu_button.pack()
+        #虚拟机显卡
+        self.vm_gpu_title = Label(self.root,text="输入显卡型号")
+        self.vm_gpu_title.pack()
+        self.vm_gpu_1 = Entry(self.root)
+        self.vm_gpu_1.pack()
+        def addgpu():
+            self.vm_gpu = self.vm_gpu_1.get()
+            self.vm_cmd.extend(["-vga", self.vm_gpu])
+        self.vm_gpu_button = ttk.Button(self.root,text="确定",command=addgpu)
+        self.vm_gpu_button.pack()
+        #虚拟机磁盘
+        self.vm_hd_title = Label(self.root,text="输入磁盘路径")
+        self.vm_hd_title.pack()
+        self.vm_hd_1 = Entry(self.root)
+        self.vm_hd_1.pack()
+        def addhd():
+            self.vm_hd = self.vm_hd_1.get()
+            self.vm_cmd.extend(["-hda", self.vm_hd])
+        self.vm_hd_button = ttk.Button(self.root,text="确定",command=addhd)
+        self.vm_hd_button.pack()
+        #虚拟机内存
+        self.vm_ram_title = Label(self.root,text="输入内存容量MB")
+        self.vm_ram_title.pack()
+        self.vm_ram_1 = Entry(self.root)
+        self.vm_ram_1.pack()
+        def addram():
+            self.vm_ram = self.vm_ram_1.get()
+            self.vm_cmd.extend(["-m", self.vm_ram])
+        self.vm_ram_button = ttk.Button(self.root,text="确定",command=addram)
+        self.vm_ram_button.pack()
+        #虚拟机核心
+        self.vm_core_title = Label(self.root,text="输入CPU核心")
+        self.vm_core_title.pack()
+        self.vm_core_1 = Entry(self.root)
+        self.vm_core_1.pack()
+        def addcore():
+            self.vm_core = self.vm_core_1.get()
+            self.vm_cmd.extend(["-smp", self.vm_core])
+        self.vm_core_button = ttk.Button(self.root,text="确定",command=addcore)
+        self.vm_core_button.pack()
+        #虚拟机共享文件夹
+        self.vm_vvfat_title = Label(self.root,text="输入共享文件夹路径")
+        self.vm_vvfat_title.pack()
+        self.vm_vvfat_1 = Entry(self.root)
+        self.vm_vvfat_1.pack()
+        def addvvfat():
+            self.vm_vvfat = self.vm_vvfat_1.get()
+            self.vm_cmd.extend(["-drive", f"format=vvfat,dir={self.vm_vvfat},rw=on"])
+        self.vm_vvfat_button = ttk.Button(self.root,text="确定",command=addvvfat)
+        self.vm_vvfat_button.pack()
+        #虚拟机启动
+        def vmrun1():
+            run(self.vm_cmd)
+        def vmrun():
+            thread = threading.Thread(target=vmrun1, daemon=True)
+            thread.start()
+        self.vmrunbutton = ttk.Button(self.root,text="启动",command=vmrun)
+        self.vmrunbutton.pack()
+        #清空按钮
+        def clear_config():
+            self.vm_cmd = ["qemu-system-x86_64"]
+            entries = [
+                self.vm_name_1, self.vm_class_1, self.vm_kvm_1,
+                self.vm_cpu_1, self.vm_gpu_1, self.vm_hd_1,
+                self.vm_vvfat_1, self.vm_ram_1, self.vm_core_1
+            ]
+        self.clear_button = ttk.Button(self.root,text="清空",command=clear_config).pack()
+        self.root.mainloop()
+MainUI()
