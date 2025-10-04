@@ -110,8 +110,6 @@ class MainUI:
             # 从输入框直接获取当前显卡类型，而不是依赖变量
             if self.current_gpu == "std":
                 self.vm_cmd.extend(["-global", f"VGA.vgamem_mb={self.vm_vgpu}"])
-            elif self.current_gpu == "vmware":
-                self.vm_cmd.extend(["-vga.vram_size_mb",self.vm_vgpu])
             elif self.current_gpu == "qxl":
                 self.vm_cmd.extend(["-global", f"qxl-vga.vram_size_mb={self.vm_vgpu}"])
             else:
