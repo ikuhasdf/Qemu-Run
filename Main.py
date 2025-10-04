@@ -221,7 +221,7 @@ class MainUI:
         def addboot():
             selected_boot = self.boot_var.get()
             if selected_boot and not selected_boot.startswith("---"):
-                self.vm_cmd.extend(["-device", selected_boot])
+                self.vm_cmd.extend(["-boot", selected_boot])
 
         self.vm_boot_button = ttk.Button(self.main_frame, text="确定", command=addboot)
         self.vm_boot_button.pack()
