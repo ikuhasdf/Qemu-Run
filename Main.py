@@ -104,10 +104,10 @@ class MainUI:
         self.vm_vgpu_title.pack()
         self.vm_vgpu_1 = ttk.Entry(self.main_frame)
         self.vm_vgpu_1.pack()
+        self.vm_vgpu = self.vm_vgpu_1.get()
         def addvgpu():
-            current_gpu = self.gpu_var.get()
+            self.current_gpu = self.gpu_var.get()
             # 从输入框直接获取当前显卡类型，而不是依赖变量
-            current_gpu = self.vm_gpu_1.get()
             if self.current_gpu == "std":
                 self.vm_cmd.extend(["-global", f"VGA.vgamem_mb={self.vm_vgpu}"])
             elif self.current_gpu == "vmware":
