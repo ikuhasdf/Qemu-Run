@@ -42,45 +42,82 @@ class MainUI:
         self.vm_name_button = ttk.Button(self.main_frame,text="确定",command=addname)
         self.vm_name_button.pack()
         #虚拟机类型
-        self.vm_class_title = Label(self.main_frame,text="输入虚拟机类型")
+        self.vm_class_title = Label(self.main_frame,text="选择虚拟机类型")
         self.vm_class_title.pack()
-        self.vm_class_1 = ttk.Entry(self.main_frame)
-        self.vm_class_1.pack()
+        self.class_var = StringVar()
+        self.class_combo = ttk.Combobox(self.main_frame, textvariable=self.class_var)
+        self.class_combo['values'] = ("pc","q35")
+        self.class_combo.pack()
         def addclass():
-            self.vm_class = self.vm_class_1.get()
-            self.vm_cmd.extend(["-M", self.vm_class])
+            selected_class = self.class_var.get()
+            if selected_class and not selected_class.startswith("---"):
+                self.vm_cmd.extend(["-M", selected_class])
         self.vm_class_button = ttk.Button(self.main_frame,text="确定",command=addclass)
         self.vm_class_button.pack()
         #虚拟机加速
-        self.vm_kvm_title = Label(self.main_frame,text="输入虚拟机加速")
+        self.vm_kvm_title = Label(self.main_frame,text="选择加速器")
         self.vm_kvm_title.pack()
-        self.vm_kvm_1 = ttk.Entry(self.main_frame)
-        self.vm_kvm_1.pack()
+        self.kvm_var = StringVar()
+        self.kvm_combo = ttk.Combobox(self.main_frame, textvariable=self.kvm_var)
+        self.kvm_combo['values'] = ("kvm","tcg","whpx")
+        self.kvm_combo.pack()
         def addkvm():
-            self.vm_kvm = self.vm_kvm_1.get()
-            self.vm_cmd.extend(["-accel", self.vm_kvm])
+            selected_kvm = self.kvm_var.get()
+            if selected_kvm and not selected_kvm.startswith("---"):
+                self.vm_cmd.extend(["-accel", selected_kvm])
         self.vm_kvm_button = ttk.Button(self.main_frame,text="确定",command=addkvm)
         self.vm_kvm_button.pack()
         #虚拟机CPU
-        self.vm_cpu_title = Label(self.main_frame,text="输入CPU型号")
+        self.vm_cpu_title = Label(self.main_frame,text="选择CPU型号")
         self.vm_cpu_title.pack()
-        self.vm_cpu_1 = ttk.Entry(self.main_frame)
-        self.vm_cpu_1.pack()
+        self.cpu_var = StringVar()
+        self.cpu_combo = ttk.Combobox(self.main_frame, textvariable=self.cpu_var)
+        self.cpu_combo['values'] = (
+            "486", "pentium", "pentium2", "pentium3",
+            "coreduo", "core2duo", "phenom", "athlon64",
+            "qemu64", "host", "epyc","qemu32"
+        )
+        self.cpu_combo.pack()
         def addcpu():
-            self.vm_cpu = self.vm_cpu_1.get()
-            self.vm_cmd.extend(["-cpu", self.vm_cpu])
+            selected_cpu = self.cpu_var.get()
+            if selected_cpu and not selected_cpu.startswith("---"):
+                self.vm_cmd.extend(["-cpu", selected_cpu])
         self.vm_cpu_button = ttk.Button(self.main_frame,text="确定",command=addcpu)
         self.vm_cpu_button.pack()
         #虚拟机显卡
-        self.vm_gpu_title = Label(self.main_frame,text="输入显卡型号")
+        self.vm_gpu_title = Label(self.main_frame,text="选择显卡型号")
         self.vm_gpu_title.pack()
-        self.vm_gpu_1 = ttk.Entry(self.main_frame)
-        self.vm_gpu_1.pack()
+        self.gpu_var = StringVar()
+        self.gpu_combo = ttk.Combobox(self.main_frame, textvariable=self.gpu_var)
+        self.gpu_combo['values'] = (
+            "vmware", "cirrus", "std", "qxl",
+        )
+        self.gpu_combo.pack()
         def addgpu():
-            self.vm_gpu = self.vm_gpu_1.get()
-            self.vm_cmd.extend(["-vga", self.vm_gpu])
+            selected_gpu = self.gpu_var.get()
+            if selected_gpu and not selected_gpu.startswith("---"):
+                self.vm_cmd.extend(["-vga", selected_gpu])
         self.vm_gpu_button = ttk.Button(self.main_frame,text="确定",command=addgpu)
         self.vm_gpu_button.pack()
+        #虚拟机显存
+        self.vm_vgpu_title = Label(self.main_frame,text="输入显存")
+        self.vm_vgpu_title.pack()
+        self.vm_vgpu_1 = ttk.Entry(self.main_frame)
+        self.vm_vgpu_1.pack()
+        def addvgpu():
+            current_gpu = self.gpu_var.get()
+            # 从输入框直接获取当前显卡类型，而不是依赖变量
+            current_gpu = self.vm_gpu_1.get()
+            if self.current_gpu == "std":
+                self.vm_cmd.extend(["-global", f"VGA.vgamem_mb={self.vm_vgpu}"])
+            elif self.current_gpu == "vmware":
+                self.vm_cmd.extend(["-vga.vram_size_mb",self.vm_vgpu])
+            elif self.current_gpu == "qxl":
+                self.vm_cmd.extend(["-global", f"qxl-vga.vram_size_mb={self.vm_vgpu}"])
+            else:
+                messagebox.showwarning("QEMU启动器","暂不支持此显卡增加显存")
+        self.vm_vgpu_button = ttk.Button(self.main_frame,text="确定",command=addvgpu)
+        self.vm_vgpu_button.pack()
         #虚拟机磁盘
         self.vm_hd_title = Label(self.main_frame,text="输入磁盘路径")
         self.vm_hd_title.pack()
@@ -112,24 +149,36 @@ class MainUI:
         self.vm_core_button = ttk.Button(self.main_frame,text="确定",command=addcore)
         self.vm_core_button.pack()
         #虚拟机声卡
-        self.vm_sound_title = Label(self.main_frame,text="输入声卡型号")
+        self.vm_sound_title = Label(self.main_frame,text="选择声卡型号")
         self.vm_sound_title.pack()
-        self.vm_sound_1 = ttk.Entry(self.main_frame)
-        self.vm_sound_1.pack()
+        self.sound_var = StringVar()
+        self.sound_combo = ttk.Combobox(self.main_frame, textvariable=self.sound_var)
+        self.sound_combo['values'] = (
+            "ac97", "sb16", "intel-hda", "es1370"
+        )
+        self.sound_combo.pack()
         def addsound():
-            self.vm_sound = self.vm_sound_1.get()
-            self.vm_cmd.extend(["-device", self.vm_sound])
+            selected_sound = self.sound_var.get()
+            if selected_sound and not selected_sound.startswith("---"):
+                self.vm_cmd.extend(["-device", selected_sound])
         self.vm_sound_button = ttk.Button(self.main_frame,text="确定",command=addsound)
         self.vm_sound_button.pack()
         #虚拟机网卡
-        self.vm_net_title = Label(self.main_frame,text="输入网卡型号")
+        self.vm_net_title = Label(self.main_frame, text="选择网卡型号")
         self.vm_net_title.pack()
-        self.vm_net_1 = ttk.Entry(self.main_frame)
-        self.vm_net_1.pack()
+        self.net_var = StringVar()
+        self.net_combo = ttk.Combobox(self.main_frame, textvariable=self.net_var)
+        self.net_combo['values'] = (
+            "e1000", "rtl8139", "ne2k_pci",
+        )
+        self.net_combo.pack()
+
         def addnet():
-            self.vm_net = self.vm_net_1.get()
-            self.vm_cmd.extend(["-device", self.vm_net])
-        self.vm_net_button = ttk.Button(self.main_frame,text="确定",command=addnet)
+            selected_net = self.net_var.get()
+            if selected_net and not selected_net.startswith("---"):
+                self.vm_cmd.extend(["-device", selected_net])
+
+        self.vm_net_button = ttk.Button(self.main_frame, text="确定", command=addnet)
         self.vm_net_button.pack()
         #虚拟机共享文件夹
         self.vm_vvfat_title = Label(self.main_frame,text="输入共享文件夹路径")
@@ -162,14 +211,21 @@ class MainUI:
         self.vm_f_button = ttk.Button(self.main_frame,text="确定",command=addf)
         self.vm_f_button.pack()
         #虚拟机启动选项
-        self.vm_boot_title = Label(self.main_frame,text="输入虚拟机启动选项,硬盘选C，软盘选A，光盘选择D")
+        self.vm_boot_title = Label(self.main_frame, text="选择启动选项")
         self.vm_boot_title.pack()
-        self.vm_boot_1 = ttk.Entry(self.main_frame)
-        self.vm_boot_1.pack()
+        self.boot_var = StringVar()
+        self.boot_combo = ttk.Combobox(self.main_frame, textvariable=self.boot_var)
+        self.boot_combo['values'] = (
+            "c", "d", "a",
+        )
+        self.boot_combo.pack()
+
         def addboot():
-            self.vm_boot = self.vm_boot_1.get()
-            self.vm_cmd.extend(["-boot", self.vm_boot])
-        self.vm_boot_button = ttk.Button(self.main_frame,text="确定",command=addboot)
+            selected_boot = self.boot_var.get()
+            if selected_boot and not selected_boot.startswith("---"):
+                self.vm_cmd.extend(["-device", selected_boot])
+
+        self.vm_boot_button = ttk.Button(self.main_frame, text="确定", command=addboot)
         self.vm_boot_button.pack()
         #虚拟机高级参数
         self.vm_tall_title = Label(self.main_frame,text="输入额外QEMU参数")
@@ -192,18 +248,32 @@ class MainUI:
         #清空按钮
         def clear_config():
             self.vm_cmd = ["qemu-system-x86_64"]
-        self.clear_button = ttk.Button(self.main_frame,text="清空QEMU指令",command=clear_config).pack()
-        #清空所有参数按钮
-        def clear_config1():
+            self.clear_button = ttk.Button(self.main_frame,text="清空QEMU指令",command=clear_config).pack()
             self.vm_cmd = ["qemu-system-x86_64"]
+
+            # 清空所有输入框 (Entry)
             entries = [
-                self.vm_name_1, self.vm_class_1, self.vm_kvm_1,
-                self.vm_cpu_1, self.vm_gpu_1, self.vm_hd_1,
-                self.vm_vvfat_1, self.vm_ram_1, self.vm_core_1,self.vm_sound_1,self.vm_net_1,
-                self.vm_cd_1,self.vm_tall_1,self.vm_f_1,self.vm_boot_1
+                self.vm_name_1, self.vm_hd_1, self.vm_vvfat_1,
+                self.vm_ram_1, self.vm_core_1, self.vm_cd_1,
+                self.vm_tall_1, self.vm_f_1, self.vm_vgpu_1
             ]
             for entry in entries:
                 entry.delete(0, END)
-        self.clear_button_1 = ttk.Button(self.main_frame,text="清空所有参数",command=clear_config1).pack()
+
+            # 清空所有组合框 (Combobox)
+            combos = [
+                self.class_combo,  # 虚拟机类型
+                self.kvm_combo,  # 加速器
+                self.cpu_combo,  # CPU型号
+                self.gpu_combo,  # 显卡型号
+                self.sound_combo,  # 声卡型号
+                self.net_combo,  # 网卡型号
+                self.boot_combo  # 启动选项
+            ]
+            for combo in combos:
+                combo.set('')  # 清空组合框选择
+
+        self.clear_button_1 = ttk.Button(self.main_frame, text="清空所有参数", command=clear_config)
+        self.clear_button_1.pack()
         self.root.mainloop()
 MainUI()
