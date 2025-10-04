@@ -246,7 +246,8 @@ class MainUI:
         #清空按钮
         def clear_config():
             self.vm_cmd = ["qemu-system-x86_64"]
-            self.clear_button = ttk.Button(self.main_frame,text="清空QEMU指令",command=clear_config).pack()
+        self.clear_button = ttk.Button(self.main_frame,text="清空QEMU指令",command=clear_config).pack()
+        def clear_config1():
             self.vm_cmd = ["qemu-system-x86_64"]
 
             # 清空所有输入框 (Entry)
@@ -271,7 +272,7 @@ class MainUI:
             for combo in combos:
                 combo.set('')  # 清空组合框选择
 
-        self.clear_button_1 = ttk.Button(self.main_frame, text="清空所有参数", command=clear_config)
+        self.clear_button_1 = ttk.Button(self.main_frame, text="清空所有参数", command=clear_config1)
         self.clear_button_1.pack()
         self.root.mainloop()
 MainUI()
