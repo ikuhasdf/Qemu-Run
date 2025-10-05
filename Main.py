@@ -7,7 +7,7 @@ class MainUI:
         #初始化
         self.vm_cmd = ["qemu-system-x86_64"]
         self.root = Tk()
-        self.root.title("Qemu启动器1.1")
+        self.root.title("Qemu启动器1.2 Beta 1")
         self.root.geometry("260x480")
         scrollbar = Scrollbar(self.root)
         scrollbar.pack(side="right", fill="y")
@@ -73,9 +73,9 @@ class MainUI:
         self.cpu_var = StringVar()
         self.cpu_combo = ttk.Combobox(self.main_frame, textvariable=self.cpu_var)
         self.cpu_combo['values'] = (
-            "486", "pentium", "pentium2", "pentium3",
+            "486", "pentium","pentium-v1","pentium2", "pentium2-v1","pentium3","pentium3-v1",
             "coreduo", "core2duo", "phenom", "athlon64",
-            "qemu64", "host", "epyc","qemu32"
+            "qemu64", "host", "EPYC","qemu32","base","max"
         )
         self.cpu_combo.pack()
         def addcpu():
@@ -126,6 +126,16 @@ class MainUI:
             self.vm_cmd.extend(["-hda", self.vm_hd])
         self.vm_hd_button = ttk.Button(self.main_frame,text="确定",command=addhd)
         self.vm_hd_button.pack()
+        #虚拟机磁盘1
+        self.vm_hd1_title = Label(self.main_frame,text="输入第二块磁盘路径")
+        self.vm_hd1_title.pack()
+        self.vm_hd1_1 = ttk.Entry(self.main_frame)
+        self.vm_hd1_1.pack()
+        def addhd1():
+            self.vm_hd1 = self.vm_hd1_1.get()
+            self.vm_cmd.extend(["-hdb", self.vm_hd1])
+        self.vm_hd1_button = ttk.Button(self.main_frame,text="确定",command=addhd1)
+        self.vm_hd1_button.pack()
         #虚拟机内存
         self.vm_ram_title = Label(self.main_frame,text="输入内存容量MB")
         self.vm_ram_title.pack()
@@ -136,6 +146,16 @@ class MainUI:
             self.vm_cmd.extend(["-m", self.vm_ram])
         self.vm_ram_button = ttk.Button(self.main_frame,text="确定",command=addram)
         self.vm_ram_button.pack()
+        #虚拟机BIOS
+        self.vm_bios_title = Label(self.main_frame,text="输入虚拟机BIOS路径")
+        self.vm_bios_title.pack()
+        self.vm_bios_1 = ttk.Entry(self.main_frame)
+        self.vm_bios_1.pack()
+        def addbios():
+            self.vm_bios = self.vm_bios_1.get()
+            self.vm_cmd.extend(["-bios", self.vm_bios])
+        self.vm_bios_button = ttk.Button(self.main_frame,text="确定",command=addbios)
+        self.vm_bios_button.pack()
         #虚拟机核心
         self.vm_core_title = Label(self.main_frame,text="输入CPU核心")
         self.vm_core_title.pack()
@@ -243,6 +263,43 @@ class MainUI:
             thread.start()
         self.vmrunbutton = ttk.Button(self.main_frame,text="启动",command=vmrun)
         self.vmrunbutton.pack()
+        #镜像工厂
+        def vmimg():
+            img_img = []
+            img_window = Toplevel()
+            img_window.title("镜像工厂")
+            img_window.geometry("640x480")
+            img_name_var = StringVar()
+            disk_name_var = StringVar()
+            big_name_var = StringVar()
+            img_format_var = StringVar()
+            name = Label(img_window,text="输入磁盘名").pack()
+            img_name_input = ttk.Entry(img_window,textvariable=img_name_var).pack()
+            disk = Label(img_window,text="输入创建磁盘的路径")
+            disk.pack()
+            disk_name_input = ttk.Entry(img_window,textvariable=disk_name_var)
+            disk_name_input.pack()
+            big = Label(img_window,text="输入磁盘容量").pack()
+            big_name_input = ttk.Entry(img_window,textvariable=big_name_var).pack()
+            # 磁盘格式
+            Label(img_window, text="选择磁盘格式").pack()
+            img_combo = ttk.Combobox(img_window, textvariable=img_format_var)
+            img_combo['values'] = ("qcow2","qcow","raw", "vmdk", "vdi",)
+            img_combo.pack()
+            def addimg():
+                selected_img = img_format_var.get()
+                disk_name = disk_name_var.get()
+                big_name = big_name_var.get()
+                img_name = img_name_var.get()
+        
+                selected_img = img_format_var.get()
+                if selected_img and not selected_img.startswith("---"):
+                    img_img.extend(["qemu-img", "create", "-f", selected_img, f"{disk_name_var.get()}/{img_name_var.get()}.{selected_img}", big_name_var.get()])
+                    run(img_img)
+            vm_img_button = ttk.Button(img_window,text="创建镜像",command=addimg)
+            vm_img_button.pack()
+        self.vmimgbutton = ttk.Button(self.main_frame,text="镜像工厂",command=vmimg)
+        self.vmimgbutton.pack()
         #清空按钮
         def clear_config():
             self.vm_cmd = ["qemu-system-x86_64"]
@@ -254,7 +311,7 @@ class MainUI:
             entries = [
                 self.vm_name_1, self.vm_hd_1, self.vm_vvfat_1,
                 self.vm_ram_1, self.vm_core_1, self.vm_cd_1,
-                self.vm_tall_1, self.vm_f_1, self.vm_vgpu_1
+                self.vm_tall_1, self.vm_f_1, self.vm_vgpu_1,self.vm_bios_1,self.vm_hd1_1
             ]
             for entry in entries:
                 entry.delete(0, END)
