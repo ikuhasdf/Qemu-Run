@@ -1,41 +1,103 @@
-# Qemu-Run - QEMU虚拟机启动器
+```markdown
+# QEMU Launcher 1.2 Release
 
-**原创作者：** [看啥看看不死]  
-**项目主页：** https://github.com/ikuhasdf/Qemu-Run    
-**开源协议：** GNU General Public License v3.0
+A graphical frontend for QEMU virtualization, built with Python and Tkinter.
 
-## 🚀 项目特色
-- 跨平台支持（Linux/Windows）
-- 智能配置生成
-- VVFAT共享文件夹支持
-- 开源透明，拒绝黑箱
-- 自定义启动项
-- 高级参数
+## New Features
 
-## ⚠️ 版权声明
-本项目采用GPLv3开源协议。任何基于本项目的二次开发必须：
-1. 明确标注原作者信息
-2. 保持同样的开源协议
-3. 免费向社区开放
+### Expanded CPU Support
+Added support for additional CPU models:
+```python
+cpu_models = [
+    "486", "pentium", "pentium-v1", "pentium2", "pentium2-v1",
+    "pentium3", "pentium3-v1", "coreduo", "core2duo", "phenom",
+    "athlon64", "qemu64", "host", "EPYC", "qemu32", "base", "max"
+]
+```
 
-## 🎯 下载使用
-**推荐直接从GitHub下载**，保证获取的是原版正品！
+Custom BIOS Support
 
-## 🔧 开发交流
-- 问题反馈：GitHub Issues
-- 技术讨论：GitHub Discussions
-- **注意：本项目不会通过QQ群提供特殊版本**
+Specify custom BIOS files for specialized virtualization needs:
 
-## ❌ macOS 支持说明
+```python
+def add_bios():
+    bios_path = self.bios_entry.get()
+    if bios_path:
+        self.vm_cmd.extend(["-bios", bios_path])
+```
 
-由于苹果系统的技术限制，本项目暂不支持macOS：
+Secondary Disk Support
 
-### 技术限制
-- 🚫 无法使用KVM硬件加速，虚拟化性能极差
-- 🚫 系统沙盒限制硬件访问和进程管理  
-- 🚫 公证和签名要求增加分发复杂度
+Configure multiple storage devices with second disk support:
 
-### 替代方案
-- ✅ 在mac上安装Linux双系统
-- ✅ 使用UTM等专为mac优化的虚拟化方案
-- ✅ 通过云服务器访问完整的虚拟化功能
+```python
+def add_secondary_disk():
+    disk_path = self.hdb_entry.get()
+    if disk_path:
+        self.vm_cmd.extend(["-hdb", disk_path])
+```
+
+Image Factory
+
+Create virtual disk images with multiple format support:
+
+```python
+def create_disk_image():
+    formats = ["qcow2", "qcow", "raw", "vmdk", "vdi"]
+    cmd = [
+        "qemu-img", "create", "-f", selected_format,
+        f"{output_path}/{image_name}.{selected_format}", 
+        disk_size
+    ]
+    run(cmd)
+```
+
+Enhanced Device Selection
+
+Improved hardware configuration with combobox selections:
+
+```python
+# Graphics cards
+gpu_options = ["vmware", "cirrus", "std", "qxl"]
+
+# Network adapters  
+net_options = ["e1000", "rtl8139", "ne2k_pci"]
+
+# Sound cards
+sound_options = ["ac97", "sb16", "intel-hda", "es1370"]
+```
+
+Technical Specifications
+
+· Base Command: qemu-system-x86_64
+· Acceleration: KVM, TCG, WHPX support
+· Memory: Configurable via -m parameter
+· CPU Cores: SMP support with -smp
+· Boot Options: Flexible boot device selection (a, c, d)
+
+Usage Example
+
+```bash
+# Generated command example
+qemu-system-x86_64 -name "TestVM" -M pc -accel kvm -cpu qemu64 \
+  -vga std -hda /path/to/disk.qcow2 -hdb /path/to/disk2.qcow2 \
+  -m 2048 -smp 4 -device e1000 -boot c \
+  -drive format=vvfat,dir=/shared/path,rw=on
+```
+
+License
+
+This project is licensed under the GNU General Public License v3.0. See LICENSE file for details.
+
+Source Code
+
+Available on GitHub: https://github.com/lkuhasdf/Qemu-Run
+
+Requirements
+
+· Python 3.x
+· Tkinter
+· QEMU system utilities
+· Supported on Linux and Windows systems
+
+```
