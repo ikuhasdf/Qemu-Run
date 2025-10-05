@@ -7,7 +7,7 @@ class MainUI:
         #初始化
         self.vm_cmd = ["qemu-system-x86_64"]
         self.root = Tk()
-        self.root.title("Qemu启动器1.2 Beta 1")
+        self.root.title("Qemu启动器1.2")
         self.root.geometry("260x480")
         scrollbar = Scrollbar(self.root)
         scrollbar.pack(side="right", fill="y")
