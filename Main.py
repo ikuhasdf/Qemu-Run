@@ -7,7 +7,7 @@ class MainUI:
         #初始化
         self.vm_cmd = ["qemu-system-x86_64"]
         self.root = Tk()
-        self.root.title("Qemu启动器1.2")
+        self.root.title("Qemu启动器1.3")
         self.root.geometry("260x480")
         scrollbar = Scrollbar(self.root)
         scrollbar.pack(side="right", fill="y")
@@ -136,6 +136,26 @@ class MainUI:
             self.vm_cmd.extend(["-hdb", self.vm_hd1])
         self.vm_hd1_button = ttk.Button(self.main_frame,text="确定",command=addhd1)
         self.vm_hd1_button.pack()
+        #虚拟机磁盘2
+        self.vm_hd2_title = Label(self.main_frame,text="输入第三块磁盘路径")
+        self.vm_hd2_title.pack()
+        self.vm_hd2_1 = ttk.Entry(self.main_frame)
+        self.vm_hd2_1.pack()
+        def addhd2():
+            self.vm_hd2 = self.vm_hd2_1.get()
+            self.vm_cmd.extend(["-hdc", self.vm_hd2])
+        self.vm_hd2_button = ttk.Button(self.main_frame,text="确定",command=addhd2)
+        self.vm_hd2_button.pack()
+        #虚拟机磁盘4
+        self.vm_hd3_title = Label(self.main_frame,text="输入第四块磁盘路径")
+        self.vm_hd3_title.pack()
+        self.vm_hd3_1 = ttk.Entry(self.main_frame)
+        self.vm_hd3_1.pack()
+        def addhd3():
+            self.vm_hd3 = self.vm_hd3_1.get()
+            self.vm_cmd.extend(["-hdd", self.vm_hd3])
+        self.vm_hd3_button = ttk.Button(self.main_frame,text="确定",command=addhd3)
+        self.vm_hd3_button.pack()
         #虚拟机内存
         self.vm_ram_title = Label(self.main_frame,text="输入内存容量MB")
         self.vm_ram_title.pack()
@@ -269,21 +289,37 @@ class MainUI:
             img_window = Toplevel()
             img_window.title("镜像工厂")
             img_window.geometry("640x480")
+            scrollbar = Scrollbar(img_window)
+            scrollbar.pack(side="right", fill="y")
+            canvas = Canvas(img_window, yscrollcommand=scrollbar.set)
+            canvas.pack(side="left", fill="both", expand=True)
+            main_frame1 = Frame(canvas)
+            scrollbar.config(command=canvas.yview)
+            canvas.create_window((0, 0), window=main_frame1, anchor="nw")
+            def configure_canvas1(event):
+                canvas.configure(scrollregion=canvas.bbox("all"))
+
+            main_frame1.bind("<Configure>", configure_canvas1)
+
+            def on_mousewheel1(event):
+                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+            canvas.bind("<MouseWheel>", on_mousewheel1)
             img_name_var = StringVar()
             disk_name_var = StringVar()
             big_name_var = StringVar()
             img_format_var = StringVar()
-            name = Label(img_window,text="输入磁盘名").pack()
-            img_name_input = ttk.Entry(img_window,textvariable=img_name_var).pack()
-            disk = Label(img_window,text="输入创建磁盘的路径")
+            name = Label(main_frame1,text="输入磁盘名").pack()
+            img_name_input = ttk.Entry(main_frame1,textvariable=img_name_var).pack()
+            disk = Label(main_frame1,text="输入创建磁盘的路径")
             disk.pack()
-            disk_name_input = ttk.Entry(img_window,textvariable=disk_name_var)
+            disk_name_input = ttk.Entry(main_frame1,textvariable=disk_name_var)
             disk_name_input.pack()
-            big = Label(img_window,text="输入磁盘容量").pack()
-            big_name_input = ttk.Entry(img_window,textvariable=big_name_var).pack()
+            big = Label(main_frame1,text="输入磁盘容量").pack()
+            big_name_input = ttk.Entry(main_frame1,textvariable=big_name_var).pack()
             # 磁盘格式
-            Label(img_window, text="选择磁盘格式").pack()
-            img_combo = ttk.Combobox(img_window, textvariable=img_format_var)
+            Label(main_frame1, text="选择磁盘格式").pack()
+            img_combo = ttk.Combobox(main_frame1, textvariable=img_format_var)
             img_combo['values'] = ("qcow2","qcow","raw", "vmdk", "vdi",)
             img_combo.pack()
             def addimg():
@@ -296,7 +332,51 @@ class MainUI:
                 if selected_img and not selected_img.startswith("---"):
                     img_img.extend(["qemu-img", "create", "-f", selected_img, f"{disk_name_var.get()}/{img_name_var.get()}.{selected_img}", big_name_var.get()])
                     run(img_img)
-            vm_img_button = ttk.Button(img_window,text="创建镜像",command=addimg)
+            vm_img_button = ttk.Button(main_frame1,text="创建镜像",command=addimg)
+            vm_img_button.pack()
+            #扩容磁盘
+            Label(main_frame1,text="扩容硬盘").pack()
+            img_name_varbig = StringVar()
+            img_format_var_gb = StringVar()
+            disk_name_varbig = StringVar()
+            name_big = Label(main_frame1, text="输入磁盘路径").pack()
+            img_name_inputbig = ttk.Entry(main_frame1, textvariable=img_name_varbig).pack()
+            size_label = Label(main_frame1, text="输入扩容容量").pack()
+            size_input = ttk.Entry(main_frame1, textvariable=disk_name_varbig).pack()
+            diskbiggb = Label(main_frame1, text="输入扩容的单位").pack()
+            img_combogb = ttk.Combobox(main_frame1, textvariable=img_format_var_gb)
+            img_combogb['values'] = ("K", "M", "G", "T", "P")
+            img_combogb.pack()
+            def addimgbig():
+                img_name = img_name_varbig.get()
+                diskgb = img_format_var_gb.get()
+                size_num = disk_name_varbig.get()
+                resize_cmd = ["qemu-img", "resize", img_name, f"+{size_num}{diskgb}"]
+                run(resize_cmd)
+            vm_img_button = ttk.Button(main_frame1, text="扩容镜像", command=addimgbig)
+            vm_img_button.pack()
+            # 缩减磁盘
+            Label(main_frame1, text="缩减磁盘(危险！)").pack()
+            img_name_varbig1 = StringVar()
+            img_format_var_gb1 = StringVar()
+            disk_name_varbig1 = StringVar()
+            name_big1 = Label(main_frame1, text="输入磁盘路径").pack()
+            img_name_inputbig1 = ttk.Entry(main_frame1, textvariable=img_name_varbig1).pack()
+            size_label1 = Label(main_frame1, text="输入缩减容量").pack()
+            size_input1 = ttk.Entry(main_frame1, textvariable=disk_name_varbig1).pack()
+            diskbiggb1 = Label(main_frame1, text="输入缩减的单位").pack()
+            img_combogb1 = ttk.Combobox(main_frame1, textvariable=img_format_var_gb1)
+            img_combogb1['values'] = ("K", "M", "G", "T", "P")
+            img_combogb1.pack()
+
+            def addimgbig1():
+                img_name1 = img_name_varbig1.get()
+                diskgb1 = img_format_var_gb1.get()
+                size_num1 = disk_name_varbig1.get()
+                resize_cmd = ["qemu-img", "resize", img_name1, f"-{size_num1}{diskgb1}"]
+                run(resize_cmd)
+
+            vm_img_button = ttk.Button(main_frame1, text="缩减镜像", command=addimgbig1)
             vm_img_button.pack()
         self.vmimgbutton = ttk.Button(self.main_frame,text="镜像工厂",command=vmimg)
         self.vmimgbutton.pack()
@@ -311,8 +391,10 @@ class MainUI:
             entries = [
                 self.vm_name_1, self.vm_hd_1, self.vm_vvfat_1,
                 self.vm_ram_1, self.vm_core_1, self.vm_cd_1,
-                self.vm_tall_1, self.vm_f_1, self.vm_vgpu_1,self.vm_bios_1,self.vm_hd1_1
-            ]
+                self.vm_tall_1, self.vm_f_1, self.vm_vgpu_1,
+                self.vm_bios_1,self.vm_hd1_1,self.vm_hd2_1,
+                self.vm_hd3_1
+                ]
             for entry in entries:
                 entry.delete(0, END)
 
