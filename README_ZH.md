@@ -61,7 +61,7 @@ qemu-system-x86_64 -name "TestVM" -M pc -accel kvm -cpu qemu64 \
 🔧 环境要求
 
 · Python 3.x
-· Tkinter 图形库
+· PyQT5 图形库
 · QEMU 系统工具
 
 📄 许可证

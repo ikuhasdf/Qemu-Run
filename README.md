@@ -57,7 +57,7 @@ qemu-system-x86_64 -name "TestVM" -M pc -accel kvm -cpu qemu64 \
 🔧 Requirements
 
 · Python 3.x
-· Tkinter
+· PyQT5
 · QEMU system utilities
 
 📄 License

@@ -1,590 +1,559 @@
-from tkinter import *
-from subprocess import *
-from tkinter import ttk,messagebox
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+import subprocess
 import threading
-class MainUI:
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QPushButton, QMessageBox, QComboBox, QScrollArea, QFrame, QDialog,
+    QFormLayout, QFileDialog, QSpinBox
+)
+from PyQt5.QtCore import Qt
+
+class ImageFactoryDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("镜像工厂")
+        self.setMinimumSize(640, 480)
+
+        layout = QVBoxLayout(self)
+
+        form = QFormLayout()
+        self.img_name = QLineEdit()      # 名称（不含路径）
+        self.img_dir = QLineEdit()       # 路径
+        self.img_size = QLineEdit()      # 大小（如 10G）
+        self.img_format = QComboBox()
+        self.img_format.addItems(["qcow2", "qcow", "raw", "vmdk", "vdi"])
+
+        form.addRow("镜像名 (不含扩展)：", self.img_name)
+        dir_row = QHBoxLayout()
+        dir_row.addWidget(self.img_dir)
+        btn_browse = QPushButton("浏览")
+        btn_browse.clicked.connect(self.browse_dir)
+        dir_row.addWidget(btn_browse)
+        form.addRow("创建路径：", dir_row)
+        form.addRow("镜像大小（如 10G / 1024M）：", self.img_size)
+        form.addRow("格式：", self.img_format)
+
+        layout.addLayout(form)
+
+        btn_create = QPushButton("创建镜像")
+        btn_create.clicked.connect(self.create_image)
+        layout.addWidget(btn_create)
+
+        # 扩容
+        layout.addWidget(QLabel("------ 磁盘扩容 ------"))
+        self.resize_path = QLineEdit()
+        self.resize_amount = QLineEdit()
+        self.resize_unit = QComboBox()
+        self.resize_unit.addItems(["K", "M", "G", "T", "P"])
+        resize_row = QHBoxLayout()
+        resize_row.addWidget(self.resize_path)
+        btn_browse_resize = QPushButton("浏览文件")
+        btn_browse_resize.clicked.connect(self.browse_file_for_resize)
+        resize_row.addWidget(btn_browse_resize)
+        layout.addLayout(QFormLayout().addRow("镜像路径：", resize_row) or [])
+
+        rform = QFormLayout()
+        rform.addRow("扩容大小 (数字)：", self.resize_amount)
+        rform.addRow("单位：", self.resize_unit)
+        layout.addLayout(rform)
+
+        btn_resize = QPushButton("扩容镜像")
+        btn_resize.clicked.connect(self.resize_image)
+        layout.addWidget(btn_resize)
+
+        # 缩减
+        layout.addWidget(QLabel("------ 磁盘缩减 (危险!) ------"))
+        self.shrink_path = QLineEdit()
+        self.shrink_amount = QLineEdit()
+        self.shrink_unit = QComboBox()
+        self.shrink_unit.addItems(["K", "M", "G", "T", "P"])
+        shrink_row = QHBoxLayout()
+        shrink_row.addWidget(self.shrink_path)
+        btn_browse_shrink = QPushButton("浏览文件")
+        btn_browse_shrink.clicked.connect(self.browse_file_for_shrink)
+        shrink_row.addWidget(btn_browse_shrink)
+        layout.addLayout(QFormLayout().addRow("镜像路径：", shrink_row) or [])
+
+        sform = QFormLayout()
+        sform.addRow("缩减大小 (数字)：", self.shrink_amount)
+        sform.addRow("单位：", self.shrink_unit)
+        layout.addLayout(sform)
+
+        btn_shrink = QPushButton("缩减镜像 (危险)")
+        btn_shrink.clicked.connect(self.shrink_image)
+        layout.addWidget(btn_shrink)
+
+    def browse_dir(self):
+        d = QFileDialog.getExistingDirectory(self, "选择文件夹", "")
+        if d:
+            self.img_dir.setText(d)
+
+    def browse_file_for_resize(self):
+        f, _ = QFileDialog.getOpenFileName(self, "选择镜像文件", "", "All Files (*)")
+        if f:
+            self.resize_path.setText(f)
+
+    def browse_file_for_shrink(self):
+        f, _ = QFileDialog.getOpenFileName(self, "选择镜像文件", "", "All Files (*)")
+        if f:
+            self.shrink_path.setText(f)
+
+    def run_cmd_in_thread(self, cmd, success_msg=None, error_msg=None):
+        def target():
+            try:
+                subprocess.run(cmd, check=True)
+                if success_msg:
+                    QMessageBox.information(self, "完成", success_msg)
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"{error_msg or '命令失败'}:\n{e}")
+        threading.Thread(target=target, daemon=True).start()
+
+    def create_image(self):
+        name = self.img_name.text().strip()
+        directory = self.img_dir.text().strip()
+        size = self.img_size.text().strip()
+        fmt = self.img_format.currentText().strip()
+        if not name or not directory or not size:
+            QMessageBox.warning(self, "警告", "请填写镜像名、路径和大小")
+            return
+        fullpath = f"{directory}/{name}.{fmt}"
+        cmd = ["qemu-img", "create", "-f", fmt, fullpath, size]
+        self.run_cmd_in_thread(cmd, success_msg=f"创建成功：{fullpath}", error_msg="创建镜像失败")
+
+    def resize_image(self):
+        path = self.resize_path.text().strip()
+        amt = self.resize_amount.text().strip()
+        unit = self.resize_unit.currentText().strip()
+        if not path or not amt:
+            QMessageBox.warning(self, "警告", "请填写镜像路径和扩容大小")
+            return
+        if not amt.isdigit():
+            QMessageBox.warning(self, "警告", "扩容大小必须为数字")
+            return
+        cmd = ["qemu-img", "resize", path, f"+{amt}{unit}"]
+        self.run_cmd_in_thread(cmd, success_msg="扩容命令已执行", error_msg="扩容失败")
+
+    def shrink_image(self):
+        path = self.shrink_path.text().strip()
+        amt = self.shrink_amount.text().strip()
+        unit = self.shrink_unit.currentText().strip()
+        if not path or not amt:
+            QMessageBox.warning(self, "警告", "请填写镜像路径和缩减大小")
+            return
+        if not amt.isdigit():
+            QMessageBox.warning(self, "警告", "缩减大小必须为数字")
+            return
+        # 警告并确认
+        r = QMessageBox.warning(self, "危险操作",
+                                "缩减镜像很危险，可能导致数据丢失。确认继续？",
+                                QMessageBox.Yes | QMessageBox.No)
+        if r != QMessageBox.Yes:
+            return
+        cmd = ["qemu-img", "resize", path, f"-{amt}{unit}"]
+        self.run_cmd_in_thread(cmd, success_msg="缩减命令已执行", error_msg="缩减失败")
+
+
+class QemuLauncher(QWidget):
     def __init__(self):
-        #初始化
+        super().__init__()
+        self.setWindowTitle("Qemu启动器 PyQt5 重写")
+        self.setMinimumSize(500, 600)
         self.vm_cmd = ["qemu-system-x86_64"]
-        self.root = Tk()
-        self.root.title("Qemu启动器1.3")
-        self.root.geometry("460x480")
-        scrollbar = Scrollbar(self.root)
-        scrollbar.pack(side="right", fill="y")
-        canvas = Canvas(self.root, yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.config(command=canvas.yview)
-        self.main_frame = Frame(canvas)
-        canvas.create_window((0, 0), window=self.main_frame, anchor="nw")
-        def configure_canvas(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
 
-        self.main_frame.bind("<Configure>", configure_canvas)
+        main_layout = QVBoxLayout(self)
 
-        def on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        # 滚动区域
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content = QFrame()
+        content_layout = QVBoxLayout(content)
+        scroll.setWidget(content)
+        main_layout.addWidget(scroll)
 
-        canvas.bind("<MouseWheel>", on_mousewheel)
-        vm_command = Entry(self.main_frame,)
-        #虚拟机名字
-        self.command_updates_enabled = True
+        # 当前命令显示
+        content_layout.addWidget(QLabel("当前QEMU命令:"))
+        self.cmd_line = QLineEdit()
+        self.cmd_line.setReadOnly(True)
+        content_layout.addWidget(self.cmd_line)
 
-        def update_command_display():
-            if self.command_updates_enabled:
-                command_str = " ".join(self.vm_cmd)
-                if hasattr(self, 'vm_command_entry'):
-                    self.vm_command_entry.delete(0, END)
-                    self.vm_command_entry.insert(0, command_str)
+        # 操作按钮行
+        btn_row = QHBoxLayout()
+        self.show_cmd_btn = QPushButton("显示命令详情")
+        self.copy_btn = QPushButton("复制命令")
+        self.refresh_btn = QPushButton("刷新显示")
+        btn_row.addWidget(self.show_cmd_btn)
+        btn_row.addWidget(self.copy_btn)
+        btn_row.addWidget(self.refresh_btn)
+        content_layout.addLayout(btn_row)
 
-        def vmruncmd():
-            self.command_str = " ".join(self.vm_cmd)
-            messagebox.showinfo("虚拟机命令", self.command_str)
+        self.show_cmd_btn.clicked.connect(self.show_command)
+        self.copy_btn.clicked.connect(self.copy_command)
+        self.refresh_btn.clicked.connect(self.update_display)
 
+        # ---- 参数输入区（按原结构逐项实现） ----
+        # vm name
+        content_layout.addWidget(QLabel("输入虚拟机名字"))
+        self.name_edit = QLineEdit()
+        content_layout.addWidget(self.name_edit)
+        name_btn = QPushButton("确定")
+        name_btn.clicked.connect(self.add_name)
+        content_layout.addWidget(name_btn)
 
-        Label(self.main_frame, text="当前QEMU命令:", font=("Arial", 9, "bold")).pack(anchor='w')
+        # vm class
+        content_layout.addWidget(QLabel("选择虚拟机类型"))
+        self.class_combo = QComboBox()
+        self.class_combo.addItems(["", "pc", "q35"])
+        content_layout.addWidget(self.class_combo)
+        class_btn = QPushButton("确定")
+        class_btn.clicked.connect(self.add_class)
+        content_layout.addWidget(class_btn)
 
-        # 命令显示输入框
-        self.vm_command_entry = ttk.Entry(self.main_frame, width=60, font=("Courier", 8))
-        self.vm_command_entry.pack(fill='x', pady=5)
+        # accel
+        content_layout.addWidget(QLabel("选择加速器"))
+        self.accel_combo = QComboBox()
+        self.accel_combo.addItems(["", "kvm", "tcg", "whpx", "whpx,kernel-irqchip=off"])
+        content_layout.addWidget(self.accel_combo)
+        accel_btn = QPushButton("确定")
+        accel_btn.clicked.connect(self.add_accel)
+        content_layout.addWidget(accel_btn)
 
-        # 按钮框架
-        cmd_button_frame = Frame(self.main_frame)
-        cmd_button_frame.pack(fill='x')
+        # cpu
+        content_layout.addWidget(QLabel("选择CPU型号"))
+        self.cpu_combo = QComboBox()
+        self.cpu_combo.addItems(["", "486", "pentium", "pentium-v1", "pentium2",
+                                 "pentium2-v1", "pentium3", "pentium3-v1",
+                                 "coreduo", "core2duo", "phenom", "athlon64",
+                                 "qemu64", "host", "EPYC", "qemu32", "base", "max"])
+        content_layout.addWidget(self.cpu_combo)
+        cpu_btn = QPushButton("确定")
+        cpu_btn.clicked.connect(self.add_cpu)
+        content_layout.addWidget(cpu_btn)
 
-        self.vm_cmd_cmd = ttk.Button(cmd_button_frame, text="显示命令详情", command=vmruncmd)
-        self.vm_cmd_cmd.pack(side='left', padx=2)
+        # 显示
+        content_layout.addWidget(QLabel("选择显卡型号"))
+        self.vga_combo = QComboBox()
+        self.vga_combo.addItems(["", "vmware", "cirrus", "std", "qxl"])
+        content_layout.addWidget(self.vga_combo)
+        vga_btn = QPushButton("确定")
+        vga_btn.clicked.connect(self.add_vga)
+        content_layout.addWidget(vga_btn)
 
-        def copy_command():
-            command_str = " ".join(self.vm_cmd)
-            self.root.clipboard_clear()
-            self.root.clipboard_append(command_str)
-            messagebox.showinfo("成功", "命令已复制到剪贴板")
+        # 显存
+        content_layout.addWidget(QLabel("输入显存 (MB)"))
+        self.vgpu_edit = QLineEdit()
+        content_layout.addWidget(self.vgpu_edit)
+        vgpu_btn = QPushButton("确定")
+        vgpu_btn.clicked.connect(self.add_vgpu)
+        content_layout.addWidget(vgpu_btn)
 
-        copy_btn = ttk.Button(cmd_button_frame, text="复制命令", command=copy_command)
-        copy_btn.pack(side='left', padx=2)
+        # 磁盘
+        for i in range(4):
+            content_layout.addWidget(QLabel(f"输入磁盘路径 index={i}"))
+            setattr(self, f"drive_edit_{i}", QLineEdit())
+            content_layout.addWidget(getattr(self, f"drive_edit_{i}"))
+            btn = QPushButton("确定")
+            btn.clicked.connect(lambda _, idx=i: self.add_drive(idx))
+            content_layout.addWidget(btn)
 
-        def refresh_command():
-            update_command_display()
-            messagebox.showinfo("刷新", "命令显示已刷新")
+        # 内存
+        content_layout.addWidget(QLabel("输入内存容量 MB"))
+        self.ram_edit = QLineEdit()
+        content_layout.addWidget(self.ram_edit)
+        ram_btn = QPushButton("确定")
+        ram_btn.clicked.connect(self.add_ram)
+        content_layout.addWidget(ram_btn)
 
-        refresh_btn = ttk.Button(cmd_button_frame, text="刷新显示", command=refresh_command)
-        refresh_btn.pack(side='left', padx=2)
+        # bios
+        content_layout.addWidget(QLabel("输入BIOS路径"))
+        self.bios_edit = QLineEdit()
+        content_layout.addWidget(self.bios_edit)
+        bios_btn = QPushButton("确定")
+        bios_btn.clicked.connect(self.add_bios)
+        content_layout.addWidget(bios_btn)
 
-        # 先定义所有配置函数，然后再包装它们
-        def addname():
-            self.vm_name = self.vm_name_1.get()
-            if self.vm_name:
-                self.vm_cmd.extend(["-name", self.vm_name])
-                update_command_display()
+        # CPU核心
+        content_layout.addWidget(QLabel("输入CPU核心数量"))
+        self.cores_edit = QLineEdit()
+        content_layout.addWidget(self.cores_edit)
+        cores_btn = QPushButton("确定")
+        cores_btn.clicked.connect(self.add_cores)
+        content_layout.addWidget(cores_btn)
 
-        def addclass():
-            selected_class = self.class_var.get()
-            if selected_class and not selected_class.startswith("---"):
-                self.vm_cmd.extend(["-M", selected_class])
-                update_command_display()
+        # 声卡
+        content_layout.addWidget(QLabel("选择声卡型号"))
+        self.sound_combo = QComboBox()
+        self.sound_combo.addItems(["", "ac97", "sb16", "intel-hda", "es1370"])
+        content_layout.addWidget(self.sound_combo)
+        sound_btn = QPushButton("确定")
+        sound_btn.clicked.connect(self.add_sound)
+        content_layout.addWidget(sound_btn)
 
-        def addkvm():
-            selected_kvm = self.kvm_var.get()
-            if selected_kvm and not selected_kvm.startswith("---"):
-                self.vm_cmd.extend(["-accel", selected_kvm])
-                update_command_display()
+        # 网络
+        content_layout.addWidget(QLabel("选择网卡型号"))
+        self.net_combo = QComboBox()
+        self.net_combo.addItems(["", "e1000", "rtl8139", "ne2k_pci"])
+        content_layout.addWidget(self.net_combo)
+        net_btn = QPushButton("确定")
+        net_btn.clicked.connect(self.add_net)
+        content_layout.addWidget(net_btn)
 
-        def addcpu():
-            selected_cpu = self.cpu_var.get()
-            if selected_cpu and not selected_cpu.startswith("---"):
-                self.vm_cmd.extend(["-cpu", selected_cpu])
-                update_command_display()
+        # 共享文件夹
+        content_layout.addWidget(QLabel("输入共享文件夹路径 (vvfat)"))
+        self.vvfat_edit = QLineEdit()
+        content_layout.addWidget(self.vvfat_edit)
+        vvfat_btn = QPushButton("确定")
+        vvfat_btn.clicked.connect(self.add_vvfat)
+        content_layout.addWidget(vvfat_btn)
 
-        def addgpu():
-            selected_gpu = self.gpu_var.get()
-            if selected_gpu and not selected_gpu.startswith("---"):
-                self.vm_cmd.extend(["-vga", selected_gpu])
-                update_command_display()
+        # 光盘
+        content_layout.addWidget(QLabel("输入光盘路径 (ISO)"))
+        self.cd_edit = QLineEdit()
+        content_layout.addWidget(self.cd_edit)
+        cd_btn = QPushButton("确定")
+        cd_btn.clicked.connect(self.add_cd)
+        content_layout.addWidget(cd_btn)
 
-        def addvgpu():
-            self.vm_vgpu = self.vm_vgpu_1.get()
-            self.current_gpu = self.gpu_var.get()
-            if self.vm_vgpu and self.vm_vgpu.isdigit():
-                if self.current_gpu == "std":
-                    self.vm_cmd.extend(["-global", f"VGA.vgamem_mb={self.vm_vgpu}"])
-                elif self.current_gpu == "qxl":
-                    self.vm_cmd.extend(["-global", f"qxl-vga.vram_size_mb={self.vm_vgpu}"])
-                else:
-                    messagebox.showwarning("QEMU启动器","暂不支持此显卡增加显存")
-                update_command_display()
+        # 软盘
+        content_layout.addWidget(QLabel("输入软盘路径"))
+        self.floppy_edit = QLineEdit()
+        content_layout.addWidget(self.floppy_edit)
+        floppy_btn = QPushButton("确定")
+        floppy_btn.clicked.connect(self.add_floppy)
+        content_layout.addWidget(floppy_btn)
+
+        # 启动设备
+        content_layout.addWidget(QLabel("选择启动设备 (a/b/c/d)"))
+        self.boot_combo = QComboBox()
+        self.boot_combo.addItems(["", "a", "b", "c", "d"])
+        content_layout.addWidget(self.boot_combo)
+        boot_btn = QPushButton("确定")
+        boot_btn.clicked.connect(self.add_boot)
+        content_layout.addWidget(boot_btn)
+
+        # 额外参数
+        content_layout.addWidget(QLabel("输入额外 QEMU 参数"))
+        self.extra_edit = QLineEdit()
+        content_layout.addWidget(self.extra_edit)
+        extra_btn = QPushButton("确定")
+        extra_btn.clicked.connect(self.add_extra)
+        content_layout.addWidget(extra_btn)
+
+        # 启动、镜像工厂和清空按钮
+        action_row = QHBoxLayout()
+        run_btn = QPushButton("启动")
+        run_btn.clicked.connect(self.run_vm)
+        img_btn = QPushButton("镜像工厂")
+        img_btn.clicked.connect(self.open_image_factory)
+        clear_cmd_btn = QPushButton("清空QEMU指令")
+        clear_cmd_btn.clicked.connect(self.clear_command)
+        clear_all_btn = QPushButton("清空所有参数")
+        clear_all_btn.clicked.connect(self.clear_all_inputs)
+
+        action_row.addWidget(run_btn)
+        action_row.addWidget(img_btn)
+        action_row.addWidget(clear_cmd_btn)
+        action_row.addWidget(clear_all_btn)
+        content_layout.addLayout(action_row)
+
+        # 最后更新显示
+        self.update_display()
+
+    # ---------- 基本操作函数 ----------
+    def update_display(self):
+        self.cmd_line.setText(" ".join(self.vm_cmd))
+
+    def show_command(self):
+        QMessageBox.information(self, "虚拟机命令", " ".join(self.vm_cmd))
+
+    def copy_command(self):
+        QApplication.clipboard().setText(" ".join(self.vm_cmd))
+        QMessageBox.information(self, "成功", "命令已复制到剪贴板")
+
+    # ---------- 参数添加函数（和原 Tkinter 对应） ----------
+    def add_name(self):
+        v = self.name_edit.text().strip()
+        if v:
+            self.vm_cmd.extend(["-name", v])
+            self.update_display()
+
+    def add_class(self):
+        v = self.class_combo.currentText().strip()
+        if v:
+            self.vm_cmd.extend(["-M", v])
+            self.update_display()
+
+    def add_accel(self):
+        v = self.accel_combo.currentText().strip()
+        if v:
+            self.vm_cmd.extend(["-accel", v])
+            self.update_display()
+
+    def add_cpu(self):
+        v = self.cpu_combo.currentText().strip()
+        if v:
+            self.vm_cmd.extend(["-cpu", v])
+            self.update_display()
+
+    def add_vga(self):
+        v = self.vga_combo.currentText().strip()
+        if v:
+            self.vm_cmd.extend(["-vga", v])
+            self.update_display()
+
+    def add_vgpu(self):
+        v = self.vgpu_edit.text().strip()
+        cur = self.vga_combo.currentText().strip()
+        if not v:
+            QMessageBox.warning(self, "警告", "请输入显存数值 (MB)")
+            return
+        if not v.isdigit():
+            QMessageBox.warning(self, "警告", "显存必须为数字")
+            return
+        if cur == "std":
+            self.vm_cmd.extend(["-global", f"VGA.vgamem_mb={v}"])
+        elif cur == "qxl":
+            self.vm_cmd.extend(["-global", f"qxl-vga.vram_size_mb={v}"])
+        else:
+            QMessageBox.warning(self, "提示", "当前显卡类型不支持设置显存")
+            return
+        self.update_display()
+
+    def add_drive(self, index):
+        edit = getattr(self, f"drive_edit_{index}")
+        path = edit.text().strip()
+        if not path:
+            QMessageBox.warning(self, "警告", "请输入磁盘路径")
+            return
+        self.vm_cmd.extend(["-drive", f"file={path},if=ide,index={index},media=disk"])
+        self.update_display()
+
+    def add_ram(self):
+        v = self.ram_edit.text().strip()
+        if not v:
+            QMessageBox.warning(self, "警告", "请输入内存大小 (MB)")
+            return
+        if not v.isdigit():
+            QMessageBox.warning(self, "警告", "内存大小必须为数字 (MB)")
+            return
+        self.vm_cmd.extend(["-m", v])
+        self.update_display()
+
+    def add_bios(self):
+        v = self.bios_edit.text().strip()
+        if v:
+            self.vm_cmd.extend(["-bios", v])
+            self.update_display()
+
+    def add_cores(self):
+        v = self.cores_edit.text().strip()
+        if not v:
+            QMessageBox.warning(self, "警告", "请输入CPU核心数")
+            return
+        if not v.isdigit():
+            QMessageBox.warning(self, "警告", "核心数必须为数字")
+            return
+        self.vm_cmd.extend(["-smp", v])
+        self.update_display()
+
+    def add_sound(self):
+        v = self.sound_combo.currentText().strip()
+        if v:
+            self.vm_cmd.extend(["-device", v])
+            self.update_display()
+
+    def add_net(self):
+        v = self.net_combo.currentText().strip()
+        if v:
+            self.vm_cmd.extend(["-device", v])
+            self.update_display()
+
+    def add_vvfat(self):
+        v = self.vvfat_edit.text().strip()
+        if v:
+            self.vm_cmd.extend(["-drive", f"format=vvfat,dir={v},rw=on"])
+            self.update_display()
+
+    def add_cd(self):
+        v = self.cd_edit.text().strip()
+        if v:
+            self.vm_cmd.extend(["-drive", f"file={v},if=ide,media=cdrom"])
+            self.update_display()
+
+    def add_floppy(self):
+        v = self.floppy_edit.text().strip()
+        if v:
+            self.vm_cmd.extend(["-drive", f"file={v},if=floppy"])
+            self.update_display()
+
+    def add_boot(self):
+        v = self.boot_combo.currentText().strip()
+        if v:
+            self.vm_cmd.extend(["-boot", v])
+            self.update_display()
+
+    def add_extra(self):
+        v = self.extra_edit.text().strip()
+        if v:
+            # 如果以逗号开头的参数，按原逻辑拼接-machine，else直接加入
+            if v.startswith(","):
+                machine = "pc"
+                cls = self.class_combo.currentText().strip()
+                if cls:
+                    machine = cls
+                self.vm_cmd.extend(["-machine", f"{machine}{v}"])
             else:
-                messagebox.showwarning("警告", "请输入有效的显存数值")
+                self.vm_cmd.append(v)
+            self.update_display()
 
-        def addhd():
-            self.vm_hd = self.vm_hd_1.get()
-            if self.vm_hd:
-                self.vm_cmd.extend(["-drive", f"file={self.vm_hd},if=ide,index=0,media=disk"])
-                update_command_display()
+    # ---------- 启动与镜像工厂 ----------
+    def run_vm(self):
+        def target():
+            try:
+                # 使用 Popen 而不是 run，让 qemu 在子进程中运行且不会阻塞
+                subprocess.Popen(self.vm_cmd)
+            except Exception as e:
+                QMessageBox.critical(self, "启动失败", str(e))
+        threading.Thread(target=target, daemon=True).start()
+        QMessageBox.information(self, "提示", "已在后台启动虚拟机（若命令正确）")
 
-        def addhd1():
-            self.vm_hd1 = self.vm_hd1_1.get()
-            if self.vm_hd1:
-                self.vm_cmd.extend(["-drive", f"file={self.vm_hd1},if=ide,index=1,media=disk"])
-                update_command_display()
+    def open_image_factory(self):
+        dlg = ImageFactoryDialog(self)
+        dlg.exec_()
 
-        def addhd2():
-            self.vm_hd2 = self.vm_hd2_1.get()
-            if self.vm_hd2:
-                self.vm_cmd.extend(["-drive", f"file={self.vm_hd2},if=ide,index=2,media=disk"])
-                update_command_display()
+    # ---------- 清空 ----------
+    def clear_command(self):
+        self.vm_cmd = ["qemu-system-x86_64"]
+        self.update_display()
 
-        def addhd3():
-            self.vm_hd3 = self.vm_hd3_1.get()
-            if self.vm_hd3:
-                self.vm_cmd.extend(["-drive", f"file={self.vm_hd3},if=ide,index=3,media=disk"])
-                update_command_display()
+    def clear_all_inputs(self):
+        # 重置命令
+        self.clear_command()
+        # 清空所有输入框与下拉框
+        widgets = [
+            self.name_edit, self.vgpu_edit, self.ram_edit, self.bios_edit,
+            self.cores_edit, self.vvfat_edit, self.cd_edit, self.floppy_edit,
+            self.extra_edit
+        ]
+        for w in widgets:
+            w.clear()
+        combos = [
+            self.class_combo, self.accel_combo, self.cpu_combo, self.vga_combo,
+            self.sound_combo, self.net_combo, self.boot_combo
+        ]
+        for c in combos:
+            c.setCurrentIndex(0)
+        for i in range(4):
+            getattr(self, f"drive_edit_{i}").clear()
+        QMessageBox.information(self, "提示", "已清空所有参数与命令")
 
-        def addram():
-            self.vm_ram = self.vm_ram_1.get()
-            if self.vm_ram and self.vm_ram.isdigit():
-                self.vm_cmd.extend(["-m", self.vm_ram])
-                update_command_display()
+def main():
+    app = QApplication(sys.argv)
+    win = QemuLauncher()
+    win.show()
+    sys.exit(app.exec_())
 
-        def addbios():
-            self.vm_bios = self.vm_bios_1.get()
-            if self.vm_bios:
-                self.vm_cmd.extend(["-bios", self.vm_bios])
-                update_command_display()
-
-        def addcore():
-            self.vm_core = self.vm_core_1.get()
-            if self.vm_core and self.vm_core.isdigit():
-                self.vm_cmd.extend(["-smp", self.vm_core])
-                update_command_display()
-
-        def addsound():
-            selected_sound = self.sound_var.get()
-            if selected_sound and not selected_sound.startswith("---"):
-                self.vm_cmd.extend(["-device", selected_sound])
-                update_command_display()
-
-        def addnet():
-            selected_net = self.net_var.get()
-            if selected_net and not selected_net.startswith("---"):
-                self.vm_cmd.extend(["-device", selected_net])
-                update_command_display()
-
-        def addvvfat():
-            self.vm_vvfat = self.vm_vvfat_1.get()
-            if self.vm_vvfat:
-                self.vm_cmd.extend(["-drive", f"format=vvfat,dir={self.vm_vvfat},rw=on"])
-                update_command_display()
-
-        def addcd():
-            self.vm_cd = self.vm_cd_1.get()
-            if self.vm_cd:
-                self.vm_cmd.extend(["-drive", f"file={self.vm_cd},if=ide,media=cdrom"])
-                update_command_display()
-
-        def addf():
-            self.vm_f = self.vm_f_1.get()
-            if self.vm_f:
-                self.vm_cmd.extend(["-drive", f"file={self.vm_f},if=floppy"])
-                update_command_display()
-
-        def addboot():
-            selected_boot = self.boot_var.get()
-            if selected_boot and not selected_boot.startswith("---"):
-                self.vm_cmd.extend(["-boot", selected_boot])
-                update_command_display()
-
-        def addtall():
-            self.vm_tall = self.vm_tall_1.get()
-            if self.vm_tall:
-                # 处理额外参数
-                if self.vm_tall.startswith(','):
-                    # 如果是机器特定参数，添加到-machine
-                    machine_type = "pc"
-                    if self.class_var.get():
-                        machine_type = self.class_var.get()
-                    self.vm_cmd.extend(["-machine", f"{machine_type}{self.vm_tall}"])
-                else:
-                    self.vm_cmd.extend([self.vm_tall])
-                update_command_display()
-        self.vm_name_title = Label(self.main_frame,text="输入虚拟机名字")
-        self.vm_name_title.pack()
-        self.vm_name_1 = ttk.Entry(self.main_frame)
-        self.vm_name_1.pack()
-        def addname():
-            self.vm_name = self.vm_name_1.get()
-            self.vm_cmd.extend(["-name", self.vm_name])
-        self.vm_name_button = ttk.Button(self.main_frame,text="确定",command=addname)
-        self.vm_name_button.pack()
-        #虚拟机类型
-        self.vm_class_title = Label(self.main_frame,text="选择虚拟机类型")
-        self.vm_class_title.pack()
-        self.class_var = StringVar()
-        self.class_combo = ttk.Combobox(self.main_frame, textvariable=self.class_var)
-        self.class_combo['values'] = ("pc","q35")
-        self.class_combo.pack()
-        def addclass():
-            selected_class = self.class_var.get()
-            if selected_class and not selected_class.startswith("---"):
-                self.vm_cmd.extend(["-M", selected_class])
-        self.vm_class_button = ttk.Button(self.main_frame,text="确定",command=addclass)
-        self.vm_class_button.pack()
-        #虚拟机加速
-        self.vm_kvm_title = Label(self.main_frame,text="选择加速器")
-        self.vm_kvm_title.pack()
-        self.kvm_var = StringVar()
-        self.kvm_combo = ttk.Combobox(self.main_frame, textvariable=self.kvm_var)
-        self.kvm_combo['values'] = ("kvm","tcg","whpx","whpx,kernel-irqchip=off")
-        self.kvm_combo.pack()
-        def addkvm():
-            selected_kvm = self.kvm_var.get()
-            if selected_kvm and not selected_kvm.startswith("---"):
-                self.vm_cmd.extend(["-accel", selected_kvm])
-        self.vm_kvm_button = ttk.Button(self.main_frame,text="确定",command=addkvm)
-        self.vm_kvm_button.pack()
-        #虚拟机CPU
-        self.vm_cpu_title = Label(self.main_frame,text="选择CPU型号")
-        self.vm_cpu_title.pack()
-        self.cpu_var = StringVar()
-        self.cpu_combo = ttk.Combobox(self.main_frame, textvariable=self.cpu_var)
-        self.cpu_combo['values'] = (
-            "486", "pentium","pentium-v1","pentium2", "pentium2-v1","pentium3","pentium3-v1",
-            "coreduo", "core2duo", "phenom", "athlon64",
-            "qemu64", "host", "EPYC","qemu32","base","max"
-        )
-        self.cpu_combo.pack()
-        def addcpu():
-            selected_cpu = self.cpu_var.get()
-            if selected_cpu and not selected_cpu.startswith("---"):
-                self.vm_cmd.extend(["-cpu", selected_cpu])
-        self.vm_cpu_button = ttk.Button(self.main_frame,text="确定",command=addcpu)
-        self.vm_cpu_button.pack()
-        #虚拟机显卡
-        self.vm_gpu_title = Label(self.main_frame,text="选择显卡型号")
-        self.vm_gpu_title.pack()
-        self.gpu_var = StringVar()
-        self.gpu_combo = ttk.Combobox(self.main_frame, textvariable=self.gpu_var)
-        self.gpu_combo['values'] = (
-            "vmware", "cirrus", "std", "qxl",
-        )
-        self.gpu_combo.pack()
-        def addgpu():
-            selected_gpu = self.gpu_var.get()
-            if selected_gpu and not selected_gpu.startswith("---"):
-                self.vm_cmd.extend(["-vga", selected_gpu])
-        self.vm_gpu_button = ttk.Button(self.main_frame,text="确定",command=addgpu)
-        self.vm_gpu_button.pack()
-        #虚拟机显存
-        self.vm_vgpu_title = Label(self.main_frame,text="输入显存")
-        self.vm_vgpu_title.pack()
-        self.vm_vgpu_1 = ttk.Entry(self.main_frame)
-        self.vm_vgpu_1.pack()
-        self.vm_vgpu = self.vm_vgpu_1.get()
-        def addvgpu():
-            self.current_gpu = self.gpu_var.get()
-            if self.current_gpu == "std":
-                self.vm_cmd.extend(["-global", f"VGA.vgamem_mb={self.vm_vgpu}"])
-            elif self.current_gpu == "qxl":
-                self.vm_cmd.extend(["-global", f"qxl-vga.vram_size_mb={self.vm_vgpu}"])
-            else:
-                messagebox.showwarning("QEMU启动器","暂不支持此显卡增加显存")
-        self.vm_vgpu_button = ttk.Button(self.main_frame,text="确定",command=addvgpu)
-        self.vm_vgpu_button.pack()
-        #虚拟机磁盘
-        self.vm_hd_title = Label(self.main_frame,text="输入磁盘路径")
-        self.vm_hd_title.pack()
-        self.vm_hd_1 = ttk.Entry(self.main_frame)
-        self.vm_hd_1.pack()
-        def addhd():
-            self.vm_hd = self.vm_hd_1.get()
-            self.vm_cmd.extend(["-drive", f"file={self.vm_hd},if=ide,index=0,media=disk"])
-        self.vm_hd_button = ttk.Button(self.main_frame,text="确定",command=addhd)
-        self.vm_hd_button.pack()
-        #虚拟机磁盘1
-        self.vm_hd1_title = Label(self.main_frame,text="输入第二块磁盘路径")
-        self.vm_hd1_title.pack()
-        self.vm_hd1_1 = ttk.Entry(self.main_frame)
-        self.vm_hd1_1.pack()
-        def addhd1():
-            self.vm_hd1 = self.vm_hd1_1.get()
-            self.vm_cmd.extend(["-drive", f"file={self.vm_hd1},if=ide,index=1,media=disk"])
-        self.vm_hd1_button = ttk.Button(self.main_frame,text="确定",command=addhd1)
-        self.vm_hd1_button.pack()
-        #虚拟机磁盘2
-        self.vm_hd2_title = Label(self.main_frame,text="输入第三块磁盘路径")
-        self.vm_hd2_title.pack()
-        self.vm_hd2_1 = ttk.Entry(self.main_frame)
-        self.vm_hd2_1.pack()
-        def addhd2():
-            self.vm_hd2 = self.vm_hd2_1.get()
-            self.vm_cmd.extend(["-drive", f"file={self.vm_hd2},if=ide,index=2,media=disk"])
-        self.vm_hd2_button = ttk.Button(self.main_frame,text="确定",command=addhd2)
-        self.vm_hd2_button.pack()
-        #虚拟机磁盘4
-        self.vm_hd3_title = Label(self.main_frame,text="输入第四块磁盘路径")
-        self.vm_hd3_title.pack()
-        self.vm_hd3_1 = ttk.Entry(self.main_frame)
-        self.vm_hd3_1.pack()
-        def addhd3():
-            self.vm_hd3 = self.vm_hd3_1.get()
-            self.vm_cmd.extend(["-drive", f"file={self.vm_hd3},if=ide,index=3,media=disk"])
-        self.vm_hd3_button = ttk.Button(self.main_frame,text="确定",command=addhd3)
-        self.vm_hd3_button.pack()
-        #虚拟机内存
-        self.vm_ram_title = Label(self.main_frame,text="输入内存容量MB")
-        self.vm_ram_title.pack()
-        self.vm_ram_1 = ttk.Entry(self.main_frame)
-        self.vm_ram_1.pack()
-        def addram():
-            self.vm_ram = self.vm_ram_1.get()
-            self.vm_cmd.extend(["-m", self.vm_ram])
-        self.vm_ram_button = ttk.Button(self.main_frame,text="确定",command=addram)
-        self.vm_ram_button.pack()
-        #虚拟机BIOS
-        self.vm_bios_title = Label(self.main_frame,text="输入虚拟机BIOS路径")
-        self.vm_bios_title.pack()
-        self.vm_bios_1 = ttk.Entry(self.main_frame)
-        self.vm_bios_1.pack()
-        def addbios():
-            self.vm_bios = self.vm_bios_1.get()
-            self.vm_cmd.extend(["-bios", self.vm_bios])
-        self.vm_bios_button = ttk.Button(self.main_frame,text="确定",command=addbios)
-        self.vm_bios_button.pack()
-        #虚拟机核心
-        self.vm_core_title = Label(self.main_frame,text="输入CPU核心")
-        self.vm_core_title.pack()
-        self.vm_core_1 = ttk.Entry(self.main_frame)
-        self.vm_core_1.pack()
-        def addcore():
-            self.vm_core = self.vm_core_1.get()
-            self.vm_cmd.extend(["-smp", self.vm_core])
-        self.vm_core_button = ttk.Button(self.main_frame,text="确定",command=addcore)
-        self.vm_core_button.pack()
-        #虚拟机声卡
-        self.vm_sound_title = Label(self.main_frame,text="选择声卡型号")
-        self.vm_sound_title.pack()
-        self.sound_var = StringVar()
-        self.sound_combo = ttk.Combobox(self.main_frame, textvariable=self.sound_var)
-        self.sound_combo['values'] = (
-            "ac97", "sb16", "intel-hda", "es1370"
-        )
-        self.sound_combo.pack()
-        def addsound():
-            selected_sound = self.sound_var.get()
-            if selected_sound and not selected_sound.startswith("---"):
-                self.vm_cmd.extend(["-device", selected_sound])
-        self.vm_sound_button = ttk.Button(self.main_frame,text="确定",command=addsound)
-        self.vm_sound_button.pack()
-        #虚拟机网卡
-        self.vm_net_title = Label(self.main_frame, text="选择网卡型号")
-        self.vm_net_title.pack()
-        self.net_var = StringVar()
-        self.net_combo = ttk.Combobox(self.main_frame, textvariable=self.net_var)
-        self.net_combo['values'] = (
-            "e1000", "rtl8139", "ne2k_pci",
-        )
-        self.net_combo.pack()
-
-        def addnet():
-            selected_net = self.net_var.get()
-            if selected_net and not selected_net.startswith("---"):
-                self.vm_cmd.extend(["-device", selected_net])
-
-        self.vm_net_button = ttk.Button(self.main_frame, text="确定", command=addnet)
-        self.vm_net_button.pack()
-        #虚拟机共享文件夹
-        self.vm_vvfat_title = Label(self.main_frame,text="输入共享文件夹路径")
-        self.vm_vvfat_title.pack()
-        self.vm_vvfat_1 = ttk.Entry(self.main_frame)
-        self.vm_vvfat_1.pack()
-        def addvvfat():
-            self.vm_vvfat = self.vm_vvfat_1.get()
-            self.vm_cmd.extend(["-drive", f"format=vvfat,dir={self.vm_vvfat},rw=on"])
-        self.vm_vvfat_button = ttk.Button(self.main_frame,text="确定",command=addvvfat)
-        self.vm_vvfat_button.pack()
-        #虚拟机光盘
-        self.vm_cd_title = Label(self.main_frame,text="输入光盘路径")
-        self.vm_cd_title.pack()
-        self.vm_cd_1 = ttk.Entry(self.main_frame)
-        self.vm_cd_1.pack()
-        def addcd():
-            self.vm_cd = self.vm_cd_1.get()
-            self.vm_cmd.extend(["-drive", f"file={self.vm_cd},if=ide,media=cdrom"])
-        self.vm_cd_button = ttk.Button(self.main_frame,text="确定",command=addcd)
-        self.vm_cd_button.pack()
-        #虚拟机软盘
-        self.vm_f_title = Label(self.main_frame,text="输入软盘路径")
-        self.vm_f_title.pack()
-        self.vm_f_1 = ttk.Entry(self.main_frame)
-        self.vm_f_1.pack()
-        def addf():
-            self.vm_f = self.vm_f_1.get()
-            self.vm_cmd.extend(["-drive", f"file={self.vm_f},if=floppy"])
-        self.vm_f_button = ttk.Button(self.main_frame,text="确定",command=addf)
-        self.vm_f_button.pack()
-        #虚拟机启动选项
-        self.vm_boot_title = Label(self.main_frame, text="选择启动选项")
-        self.vm_boot_title.pack()
-        self.boot_var = StringVar()
-        self.boot_combo = ttk.Combobox(self.main_frame, textvariable=self.boot_var)
-        self.boot_combo['values'] = (
-            "c", "d", "a",
-        )
-        self.boot_combo.pack()
-
-        def addboot():
-            selected_boot = self.boot_var.get()
-            if selected_boot and not selected_boot.startswith("---"):
-                self.vm_cmd.extend(["-boot", selected_boot])
-
-        self.vm_boot_button = ttk.Button(self.main_frame, text="确定", command=addboot)
-        self.vm_boot_button.pack()
-        #虚拟机高级参数
-        self.vm_tall_title = Label(self.main_frame,text="输入额外QEMU参数")
-        self.vm_tall_title.pack()
-        self.vm_tall_1 = ttk.Entry(self.main_frame)
-        self.vm_tall_1.pack()
-        def addtall():
-            self.vm_tall = self.vm_tall_1.get()
-            self.vm_cmd.extend([self.vm_tall])
-        self.vm_tall_button = ttk.Button(self.main_frame,text="确定",command=addtall)
-        self.vm_tall_button.pack()
-        #虚拟机启动
-        def vmrun1():
-            run(self.vm_cmd)
-        def vmrun():
-            thread = threading.Thread(target=vmrun1, daemon=True)
-            thread.start()
-        self.vmrunbutton = ttk.Button(self.main_frame,text="启动",command=vmrun)
-        self.vmrunbutton.pack()
-        #镜像工厂
-        def vmimg():
-            img_img = []
-            img_window = Toplevel()
-            img_window.title("镜像工厂")
-            img_window.geometry("640x480")
-            scrollbar = Scrollbar(img_window)
-            scrollbar.pack(side="right", fill="y")
-            canvas = Canvas(img_window, yscrollcommand=scrollbar.set)
-            canvas.pack(side="left", fill="both", expand=True)
-            main_frame1 = Frame(canvas)
-            scrollbar.config(command=canvas.yview)
-            canvas.create_window((0, 0), window=main_frame1, anchor="nw")
-            def configure_canvas1(event):
-                canvas.configure(scrollregion=canvas.bbox("all"))
-
-            main_frame1.bind("<Configure>", configure_canvas1)
-
-            def on_mousewheel1(event):
-                canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-            canvas.bind("<MouseWheel>", on_mousewheel1)
-            img_name_var = StringVar()
-            disk_name_var = StringVar()
-            big_name_var = StringVar()
-            img_format_var = StringVar()
-            name = Label(main_frame1,text="输入磁盘名").pack()
-            img_name_input = ttk.Entry(main_frame1,textvariable=img_name_var).pack()
-            disk = Label(main_frame1,text="输入创建磁盘的路径")
-            disk.pack()
-            disk_name_input = ttk.Entry(main_frame1,textvariable=disk_name_var)
-            disk_name_input.pack()
-            big = Label(main_frame1,text="输入磁盘容量").pack()
-            big_name_input = ttk.Entry(main_frame1,textvariable=big_name_var).pack()
-            # 磁盘格式
-            Label(main_frame1, text="选择磁盘格式").pack()
-            img_combo = ttk.Combobox(main_frame1, textvariable=img_format_var)
-            img_combo['values'] = ("qcow2","qcow","raw", "vmdk", "vdi",)
-            img_combo.pack()
-            def addimg():
-                selected_img = img_format_var.get()
-                disk_name = disk_name_var.get()
-                big_name = big_name_var.get()
-                img_name = img_name_var.get()
-        
-                selected_img = img_format_var.get()
-                if selected_img and not selected_img.startswith("---"):
-                    img_img.extend(["qemu-img", "create", "-f", selected_img, f"{disk_name_var.get()}/{img_name_var.get()}.{selected_img}", big_name_var.get()])
-                    run(img_img)
-            vm_img_button = ttk.Button(main_frame1,text="创建镜像",command=addimg)
-            vm_img_button.pack()
-            #扩容磁盘
-            Label(main_frame1,text="扩容硬盘").pack()
-            img_name_varbig = StringVar()
-            img_format_var_gb = StringVar()
-            disk_name_varbig = StringVar()
-            name_big = Label(main_frame1, text="输入磁盘路径").pack()
-            img_name_inputbig = ttk.Entry(main_frame1, textvariable=img_name_varbig).pack()
-            size_label = Label(main_frame1, text="输入扩容容量").pack()
-            size_input = ttk.Entry(main_frame1, textvariable=disk_name_varbig).pack()
-            diskbiggb = Label(main_frame1, text="输入扩容的单位").pack()
-            img_combogb = ttk.Combobox(main_frame1, textvariable=img_format_var_gb)
-            img_combogb['values'] = ("K", "M", "G", "T", "P")
-            img_combogb.pack()
-            def addimgbig():
-                img_name = img_name_varbig.get()
-                diskgb = img_format_var_gb.get()
-                size_num = disk_name_varbig.get()
-                resize_cmd = ["qemu-img", "resize", img_name, f"+{size_num}{diskgb}"]
-                run(resize_cmd)
-            vm_img_button = ttk.Button(main_frame1, text="扩容镜像", command=addimgbig)
-            vm_img_button.pack()
-            # 缩减磁盘
-            Label(main_frame1, text="缩减磁盘(危险！)").pack()
-            img_name_varbig1 = StringVar()
-            img_format_var_gb1 = StringVar()
-            disk_name_varbig1 = StringVar()
-            name_big1 = Label(main_frame1, text="输入磁盘路径").pack()
-            img_name_inputbig1 = ttk.Entry(main_frame1, textvariable=img_name_varbig1).pack()
-            size_label1 = Label(main_frame1, text="输入缩减容量").pack()
-            size_input1 = ttk.Entry(main_frame1, textvariable=disk_name_varbig1).pack()
-            diskbiggb1 = Label(main_frame1, text="输入缩减的单位").pack()
-            img_combogb1 = ttk.Combobox(main_frame1, textvariable=img_format_var_gb1)
-            img_combogb1['values'] = ("K", "M", "G", "T", "P")
-            img_combogb1.pack()
-
-            def addimgbig1():
-                img_name1 = img_name_varbig1.get()
-                diskgb1 = img_format_var_gb1.get()
-                size_num1 = disk_name_varbig1.get()
-                resize_cmd = ["qemu-img", "resize", img_name1, f"-{size_num1}{diskgb1}"]
-                run(resize_cmd)
-
-            vm_img_button = ttk.Button(main_frame1, text="缩减镜像", command=addimgbig1)
-            vm_img_button.pack()
-        self.vmimgbutton = ttk.Button(self.main_frame,text="镜像工厂",command=vmimg)
-        self.vmimgbutton.pack()
-        #清空按钮
-        def clear_config():
-            self.vm_cmd = ["qemu-system-x86_64"]
-        self.clear_button = ttk.Button(self.main_frame,text="清空QEMU指令",command=clear_config).pack()
-        def clear_config1():
-            self.vm_cmd = ["qemu-system-x86_64"]
-
-            # 清空所有输入框 (Entry)
-            entries = [
-                self.vm_name_1, self.vm_hd_1, self.vm_vvfat_1,
-                self.vm_ram_1, self.vm_core_1, self.vm_cd_1,
-                self.vm_tall_1, self.vm_f_1, self.vm_vgpu_1,
-                self.vm_bios_1,self.vm_hd1_1,self.vm_hd2_1,
-                self.vm_hd3_1
-                ]
-            for entry in entries:
-                entry.delete(0, END)
-
-            # 清空所有组合框 (Combobox)
-            combos = [
-                self.class_combo,  # 虚拟机类型
-                self.kvm_combo,  # 加速器
-                self.cpu_combo,  # CPU型号
-                self.gpu_combo,  # 显卡型号
-                self.sound_combo,  # 声卡型号
-                self.net_combo,  # 网卡型号
-                self.boot_combo  # 启动选项
-            ]
-            for combo in combos:
-                combo.set('')  # 清空组合框选择
-
-        self.clear_button_1 = ttk.Button(self.main_frame, text="清空所有参数", command=clear_config1)
-        self.clear_button_1.pack()
-        self.root.mainloop()
-MainUI()
+if __name__ == "__main__":
+    main()
