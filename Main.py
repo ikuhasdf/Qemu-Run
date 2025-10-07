@@ -8,7 +8,7 @@ class MainUI:
         self.vm_cmd = ["qemu-system-x86_64"]
         self.root = Tk()
         self.root.title("Qemu启动器1.3")
-        self.root.geometry("260x480")
+        self.root.geometry("460x480")
         scrollbar = Scrollbar(self.root)
         scrollbar.pack(side="right", fill="y")
         canvas = Canvas(self.root, yscrollcommand=scrollbar.set)
@@ -25,13 +25,187 @@ class MainUI:
             canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
         canvas.bind("<MouseWheel>", on_mousewheel)
-
+        vm_command = Entry(self.main_frame,)
         #虚拟机名字
+        self.command_updates_enabled = True
+
+        def update_command_display():
+            if self.command_updates_enabled:
+                command_str = " ".join(self.vm_cmd)
+                if hasattr(self, 'vm_command_entry'):
+                    self.vm_command_entry.delete(0, END)
+                    self.vm_command_entry.insert(0, command_str)
+
         def vmruncmd():
             self.command_str = " ".join(self.vm_cmd)
-            messagebox.showinfo("命令", self.command_str)
-        self.vm_cmd_cmd = ttk.Button(self.main_frame,text="虚拟机命令",command=vmruncmd)
-        self.vm_cmd_cmd.pack()
+            messagebox.showinfo("虚拟机命令", self.command_str)
+
+
+        Label(self.main_frame, text="当前QEMU命令:", font=("Arial", 9, "bold")).pack(anchor='w')
+
+        # 命令显示输入框
+        self.vm_command_entry = ttk.Entry(self.main_frame, width=60, font=("Courier", 8))
+        self.vm_command_entry.pack(fill='x', pady=5)
+
+        # 按钮框架
+        cmd_button_frame = Frame(self.main_frame)
+        cmd_button_frame.pack(fill='x')
+
+        self.vm_cmd_cmd = ttk.Button(cmd_button_frame, text="显示命令详情", command=vmruncmd)
+        self.vm_cmd_cmd.pack(side='left', padx=2)
+
+        def copy_command():
+            command_str = " ".join(self.vm_cmd)
+            self.root.clipboard_clear()
+            self.root.clipboard_append(command_str)
+            messagebox.showinfo("成功", "命令已复制到剪贴板")
+
+        copy_btn = ttk.Button(cmd_button_frame, text="复制命令", command=copy_command)
+        copy_btn.pack(side='left', padx=2)
+
+        def refresh_command():
+            update_command_display()
+            messagebox.showinfo("刷新", "命令显示已刷新")
+
+        refresh_btn = ttk.Button(cmd_button_frame, text="刷新显示", command=refresh_command)
+        refresh_btn.pack(side='left', padx=2)
+
+        # 先定义所有配置函数，然后再包装它们
+        def addname():
+            self.vm_name = self.vm_name_1.get()
+            if self.vm_name:
+                self.vm_cmd.extend(["-name", self.vm_name])
+                update_command_display()
+
+        def addclass():
+            selected_class = self.class_var.get()
+            if selected_class and not selected_class.startswith("---"):
+                self.vm_cmd.extend(["-M", selected_class])
+                update_command_display()
+
+        def addkvm():
+            selected_kvm = self.kvm_var.get()
+            if selected_kvm and not selected_kvm.startswith("---"):
+                self.vm_cmd.extend(["-accel", selected_kvm])
+                update_command_display()
+
+        def addcpu():
+            selected_cpu = self.cpu_var.get()
+            if selected_cpu and not selected_cpu.startswith("---"):
+                self.vm_cmd.extend(["-cpu", selected_cpu])
+                update_command_display()
+
+        def addgpu():
+            selected_gpu = self.gpu_var.get()
+            if selected_gpu and not selected_gpu.startswith("---"):
+                self.vm_cmd.extend(["-vga", selected_gpu])
+                update_command_display()
+
+        def addvgpu():
+            self.vm_vgpu = self.vm_vgpu_1.get()
+            self.current_gpu = self.gpu_var.get()
+            if self.vm_vgpu and self.vm_vgpu.isdigit():
+                if self.current_gpu == "std":
+                    self.vm_cmd.extend(["-global", f"VGA.vgamem_mb={self.vm_vgpu}"])
+                elif self.current_gpu == "qxl":
+                    self.vm_cmd.extend(["-global", f"qxl-vga.vram_size_mb={self.vm_vgpu}"])
+                else:
+                    messagebox.showwarning("QEMU启动器","暂不支持此显卡增加显存")
+                update_command_display()
+            else:
+                messagebox.showwarning("警告", "请输入有效的显存数值")
+
+        def addhd():
+            self.vm_hd = self.vm_hd_1.get()
+            if self.vm_hd:
+                self.vm_cmd.extend(["-drive", f"file={self.vm_hd},if=ide,index=0,media=disk"])
+                update_command_display()
+
+        def addhd1():
+            self.vm_hd1 = self.vm_hd1_1.get()
+            if self.vm_hd1:
+                self.vm_cmd.extend(["-drive", f"file={self.vm_hd1},if=ide,index=1,media=disk"])
+                update_command_display()
+
+        def addhd2():
+            self.vm_hd2 = self.vm_hd2_1.get()
+            if self.vm_hd2:
+                self.vm_cmd.extend(["-drive", f"file={self.vm_hd2},if=ide,index=2,media=disk"])
+                update_command_display()
+
+        def addhd3():
+            self.vm_hd3 = self.vm_hd3_1.get()
+            if self.vm_hd3:
+                self.vm_cmd.extend(["-drive", f"file={self.vm_hd3},if=ide,index=3,media=disk"])
+                update_command_display()
+
+        def addram():
+            self.vm_ram = self.vm_ram_1.get()
+            if self.vm_ram and self.vm_ram.isdigit():
+                self.vm_cmd.extend(["-m", self.vm_ram])
+                update_command_display()
+
+        def addbios():
+            self.vm_bios = self.vm_bios_1.get()
+            if self.vm_bios:
+                self.vm_cmd.extend(["-bios", self.vm_bios])
+                update_command_display()
+
+        def addcore():
+            self.vm_core = self.vm_core_1.get()
+            if self.vm_core and self.vm_core.isdigit():
+                self.vm_cmd.extend(["-smp", self.vm_core])
+                update_command_display()
+
+        def addsound():
+            selected_sound = self.sound_var.get()
+            if selected_sound and not selected_sound.startswith("---"):
+                self.vm_cmd.extend(["-device", selected_sound])
+                update_command_display()
+
+        def addnet():
+            selected_net = self.net_var.get()
+            if selected_net and not selected_net.startswith("---"):
+                self.vm_cmd.extend(["-device", selected_net])
+                update_command_display()
+
+        def addvvfat():
+            self.vm_vvfat = self.vm_vvfat_1.get()
+            if self.vm_vvfat:
+                self.vm_cmd.extend(["-drive", f"format=vvfat,dir={self.vm_vvfat},rw=on"])
+                update_command_display()
+
+        def addcd():
+            self.vm_cd = self.vm_cd_1.get()
+            if self.vm_cd:
+                self.vm_cmd.extend(["-drive", f"file={self.vm_cd},if=ide,media=cdrom"])
+                update_command_display()
+
+        def addf():
+            self.vm_f = self.vm_f_1.get()
+            if self.vm_f:
+                self.vm_cmd.extend(["-drive", f"file={self.vm_f},if=floppy"])
+                update_command_display()
+
+        def addboot():
+            selected_boot = self.boot_var.get()
+            if selected_boot and not selected_boot.startswith("---"):
+                self.vm_cmd.extend(["-boot", selected_boot])
+                update_command_display()
+
+        def addtall():
+            self.vm_tall = self.vm_tall_1.get()
+            if self.vm_tall:
+                # 处理额外参数
+                if self.vm_tall.startswith(','):
+                    # 如果是机器特定参数，添加到-machine
+                    machine_type = "pc"
+                    if self.class_var.get():
+                        machine_type = self.class_var.get()
+                    self.vm_cmd.extend(["-machine", f"{machine_type}{self.vm_tall}"])
+                else:
+                    self.vm_cmd.extend([self.vm_tall])
+                update_command_display()
         self.vm_name_title = Label(self.main_frame,text="输入虚拟机名字")
         self.vm_name_title.pack()
         self.vm_name_1 = ttk.Entry(self.main_frame)
@@ -107,7 +281,6 @@ class MainUI:
         self.vm_vgpu = self.vm_vgpu_1.get()
         def addvgpu():
             self.current_gpu = self.gpu_var.get()
-            # 从输入框直接获取当前显卡类型，而不是依赖变量
             if self.current_gpu == "std":
                 self.vm_cmd.extend(["-global", f"VGA.vgamem_mb={self.vm_vgpu}"])
             elif self.current_gpu == "qxl":
