@@ -1,4 +1,3 @@
-```markdown
 # QEMU Launcher 1.2
 
 [中文文档](README_ZH.md) | [English](README.md)
@@ -67,5 +66,5 @@ This project is licensed under the GNU General Public License v3.0. See the LICE
 
 🔗 Links
 
-· Source Code: GitHub Repository
-· Report Issues: GitHub Issues
+· Source Code: [GitHub Repository](https://github.com/ikuhasdf/Qemu-Run)
+· Report Issues: [GitHub Issues](https://github.com/ikuhasdf/Qemu-Run/issues)
