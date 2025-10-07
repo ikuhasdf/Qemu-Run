@@ -59,7 +59,7 @@ class MainUI:
         self.vm_kvm_title.pack()
         self.kvm_var = StringVar()
         self.kvm_combo = ttk.Combobox(self.main_frame, textvariable=self.kvm_var)
-        self.kvm_combo['values'] = ("kvm","tcg","whpx")
+        self.kvm_combo['values'] = ("kvm","tcg","whpx","whpx,kernel-irqchip=off")
         self.kvm_combo.pack()
         def addkvm():
             selected_kvm = self.kvm_var.get()
@@ -123,7 +123,7 @@ class MainUI:
         self.vm_hd_1.pack()
         def addhd():
             self.vm_hd = self.vm_hd_1.get()
-            self.vm_cmd.extend(["-hda", self.vm_hd])
+            self.vm_cmd.extend(["-drive", f"file={self.vm_hd},if=ide,index=0,media=disk"])
         self.vm_hd_button = ttk.Button(self.main_frame,text="确定",command=addhd)
         self.vm_hd_button.pack()
         #虚拟机磁盘1
@@ -133,7 +133,7 @@ class MainUI:
         self.vm_hd1_1.pack()
         def addhd1():
             self.vm_hd1 = self.vm_hd1_1.get()
-            self.vm_cmd.extend(["-hdb", self.vm_hd1])
+            self.vm_cmd.extend(["-drive", f"file={self.vm_hd1},if=ide,index=1,media=disk"])
         self.vm_hd1_button = ttk.Button(self.main_frame,text="确定",command=addhd1)
         self.vm_hd1_button.pack()
         #虚拟机磁盘2
@@ -143,7 +143,7 @@ class MainUI:
         self.vm_hd2_1.pack()
         def addhd2():
             self.vm_hd2 = self.vm_hd2_1.get()
-            self.vm_cmd.extend(["-hdc", self.vm_hd2])
+            self.vm_cmd.extend(["-drive", f"file={self.vm_hd2},if=ide,index=2,media=disk"])
         self.vm_hd2_button = ttk.Button(self.main_frame,text="确定",command=addhd2)
         self.vm_hd2_button.pack()
         #虚拟机磁盘4
@@ -153,7 +153,7 @@ class MainUI:
         self.vm_hd3_1.pack()
         def addhd3():
             self.vm_hd3 = self.vm_hd3_1.get()
-            self.vm_cmd.extend(["-hdd", self.vm_hd3])
+            self.vm_cmd.extend(["-drive", f"file={self.vm_hd3},if=ide,index=3,media=disk"])
         self.vm_hd3_button = ttk.Button(self.main_frame,text="确定",command=addhd3)
         self.vm_hd3_button.pack()
         #虚拟机内存
@@ -235,7 +235,7 @@ class MainUI:
         self.vm_cd_1.pack()
         def addcd():
             self.vm_cd = self.vm_cd_1.get()
-            self.vm_cmd.extend(["-cdrom", self.vm_cd])
+            self.vm_cmd.extend(["-drive", f"file={self.vm_cd},if=ide,media=cdrom"])
         self.vm_cd_button = ttk.Button(self.main_frame,text="确定",command=addcd)
         self.vm_cd_button.pack()
         #虚拟机软盘
@@ -245,7 +245,7 @@ class MainUI:
         self.vm_f_1.pack()
         def addf():
             self.vm_f = self.vm_f_1.get()
-            self.vm_cmd.extend(["-fda", self.vm_f])
+            self.vm_cmd.extend(["-drive", f"file={self.vm_f},if=floppy"])
         self.vm_f_button = ttk.Button(self.main_frame,text="确定",command=addf)
         self.vm_f_button.pack()
         #虚拟机启动选项
