@@ -1,4 +1,3 @@
-```markdown
 # QEMU 启动器 1.2
 
 [English Documentation](README.md) | [中文文档](README_ZH.md)
@@ -71,11 +70,9 @@ qemu-system-x86_64 -name "TestVM" -M pc -accel kvm -cpu qemu64 \
 
 🔗 相关链接
 
-· 源代码：GitHub 仓库
-· 问题反馈：GitHub Issues
+· 源代码：[GitHub 仓库](https://github.com/ikuhasdf/Qemu-Run)
+· 问题反馈：[GitHub Issues](github.com/ikuhasdf/Qemu-Run/issues)
 
 ---
 
 注意：本工具旨在简化 QEMU 的使用，同时保持与标准 QEMU 参数和功能的完全兼容。
-
-```
